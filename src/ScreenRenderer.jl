@@ -1,18 +1,24 @@
 module ScreenRenderer
-# Module to display the exfiltred screen in a given GUI
+# Module to display the exfiltred screen in a given GUI or in Terminal 
 
 # ----------------------------------------------------
 # --- Dependencies 
 # ---------------------------------------------------- 
+# For external renderer 
 using Images, ImageView
 using Gtk
+# For terminal renderer 
+using ImageInTerminal
+#using Sixel
 
 # ----------------------------------------------------
 # --- Exportation 
 # ---------------------------------------------------- 
 export initScreenRenderer 
 export displayScreen!
-export close
+export close_all
+export terminal 
+export terminal_with_sync
 
 # ----------------------------------------------------
 # --- Methods
@@ -43,14 +49,31 @@ end
 function fullScale!(mat)
     mmax = maximum(mat)
     mmin = minimum(mat)
-    mat  = (mat .- mmin) / (mmax  - mmin)
+    return (mat .- mmin) / (mmax  - mmin)
 end
 
 
 import Base.close
-function close(win::Dict{String,Any})
-    #Gtk.gtk_quit()
-    Gtk.destroy(win["gui"]["window"])
+function close_all()
+    ImageView.closeall()
 end
 
+
+""" Display the extracted image in the terminal 
+"""
+function terminal(image)
+    println("\33[H")
+    image = fullScale!(image)
+    display(colorview(Gray,image))
+end
+
+""" Display the extracted image in the terminal. It also print in white the vertical lines and horizontal lines obtained with vsync.
+"""
+function terminal_with_sync(image,y_sync,x_sync)
+    println("\33[H")
+    image = fullScale!(image)
+    image[(y_sync) .+ (-10:10),:] .= 1
+    image[:,(x_sync) .+ (-10:10)] .= 1
+    display(colorview(Gray,image))
+end
 end

@@ -27,11 +27,13 @@ catch exception
     #local completePath = "$(pwd())/$DATA_PATH/testX310.dat"
     local completePath = "/Users/Robin/data_tempest/testX310.dat"
     global sigRx = readComplexBinary(completePath,:single)
-    global sigId = sigRx
+    #global sigId = sigRx
     global IS_LOADED = true 
 end
 
 
+
+sigId = amDemod(sigRx)
 
 # --- In time domain 
 #pTime = fig();
@@ -46,7 +48,7 @@ plot!(pFreq,x=tup[1],y=tup[2])
 # --- Get the screen rate
 # ---------------------------------------------------- 
 toPow(x) = 10*log10(abs2(x))
-(Γ,τ) = calculate_autocorrelation(sigId,Fs,1/100,1/20)
+(Γ,τ) = calculate_autocorrelation(sigId,Fs,0,1/10)
 
 # --- Plot the correlation where it matters
 rates_large,Γ_short_large = zoom_autocorr(Γ,Fs;rate_min=50,rate_max=90)
@@ -80,6 +82,7 @@ y_t = let
     τ = m2 / Fs 
     1 / (fv * τ)
 end
+y_t = 1158
 
 # Here we should take the max but in a very local area
 
@@ -121,19 +124,64 @@ finalConfig = VideoMode(theConfig.width,1235,fv)
 #indexSync = findmax(syncTime)[2]
 #sigSync = sigId[indexSync:end]
 
+
+
+# ----------------------------------------------------
+# --- Fine frame synchronisation
+# ---------------------------------------------------- 
+
+
+
 # ----------------------------------------------------
 # --- Example image 
 # ---------------------------------------------------- 
 durationImage =  Int(round(Fs / fv))
-anImage = abs2.(sigId[1:durationImage])
 
-outSize = finalConfig.width * finalConfig.height 
-sigOut = transpose(reshape(imresize(anImage,outSize),finalConfig.width,finalConfig.height))
+function singleProcessing(sigId,offset,durationImage,finalConfig)
+    viewSig = abs2.(sigId[(offset) .+ (1:durationImage)])
+
+    outSize = finalConfig.width * finalConfig.height 
+    anImage = transpose(reshape(imresize(viewSig,outSize),finalConfig.width,finalConfig.height))
 
 
-screen = initScreenRenderer(finalConfig.height,finalConfig.width)
-displayScreen!(screen,sigOut)
+    screen = initScreenRenderer(finalConfig.height,finalConfig.width)
+    displayScreen!(screen,anImage)
 
+    return screen
+
+
+end
 
 #pPower = fig()
 #plot!(pPower;y=abs2.(sigId[1:1_000:end]))
+
+""" Create an Image based on the input signal, its sampling frequency, the video configuration. The parameter offset setup the offset from which the image will be generated 
+Returns an image of size finalConfig.width x finalConfig.heigth 
+"""
+function toImage(sigId,offset,Fs,finalConfig)
+    # Duration of Image based on current configuration 
+    d = Int(round(Fs/finalConfig.refresh))
+    # View on the signal 
+    s = sigId[(offset).+(1:d)]
+    # Size of the image 
+    outSize = finalConfig.width * finalConfig.height 
+    # Convert into Image using lines and columns 
+    anImage = collect(transpose(reshape(imresize(s,outSize),finalConfig.width,finalConfig.height)))
+    return anImage 
+end
+
+anImage = toImage(sigId,4_200_000,Fs,finalConfig)
+
+# ----------------------------------------------------
+# --- Frame sync
+# ---------------------------------------------------- 
+vSync = init_vsync(anImage)
+tup = vSync(anImage)
+terminal_with_sync(anImage,tup[2][2],tup[1][2])
+
+
+τ = tup[2][2] * finalConfig.width + tup[1][2]
+idx = Int(floor(τ / (finalConfig.width * finalConfig.height)  / fv * Fs))
+
+anImage = toImage(sigId,4_200_000 +idx, Fs,finalConfig)
+terminal(anImage)

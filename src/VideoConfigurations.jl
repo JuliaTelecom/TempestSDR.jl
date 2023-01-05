@@ -2,7 +2,7 @@ export VideoMode
 export find_closest_configuration
 export find_configuration
 
-struct VideoMode 
+mutable struct VideoMode 
     width::Int 
     height::Int 
     refresh::Float64
