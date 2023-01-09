@@ -40,7 +40,7 @@ function displayScreen!(p,img)
         #reveal(p, true)
     Gtk.showall(p["gui"]["window"])
     sleep(0.000001)
-    #yield()
+    yield()
     #Libc.systemsleep(0.001)
     #reveal(p["gui"]["window"],true)
 end

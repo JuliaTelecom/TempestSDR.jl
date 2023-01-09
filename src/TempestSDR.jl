@@ -6,7 +6,8 @@ module TempestSDR
 using Reexport 
 using FFTW 
 using Images
-
+using AbstractSDRs
+using Distributed 
 # ----------------------------------------------------
 # --- Dat file managment
 # ---------------------------------------------------- 
@@ -46,9 +47,19 @@ include("Autocorrelations.jl")
 # ---------------------------------------------------- 
 include("FrameSynchronisation.jl")
 @reexport using .FrameSynchronisation
+# ----------------------------------------------------
+# --- Circular buffer with radio 
+# ---------------------------------------------------- 
+include("CircularBuffer.jl")
+@reexport using .CircularBuffer
+# ----------------------------------------------------
+# --- Runtime 
+# ---------------------------------------------------- 
+include("Runtime.jl")
+export extract_configuration
+export stop_processing
 
 export coreProcessing
-
 function coreProcessing(sigId::Vector{T},Fs,theConfig::VideoMode;renderer=:gtk) where T
     # Extract configuration 
     x_t = theConfig.width    # Number of column
@@ -117,5 +128,7 @@ function coreProcessing(sigId::Vector{T},Fs,theConfig::VideoMode;renderer=:gtk) 
     @info "Image rate is $rate images per seconds"
     return imageOut
 end
+
+
 
 end
