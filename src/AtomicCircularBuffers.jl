@@ -11,7 +11,6 @@ using Base.Threads
 export AtomicCircularBuffer 
 export circ_take! 
 export circ_put!
-export init_circ_buff
 
 
 # ----------------------------------------------------
@@ -43,6 +42,17 @@ mutable struct AtomicCircularBuffer
     buffer3::AtomicBuffer
     t_new::AtomicValue
     t_stop::AtomicValue
+    function AtomicCircularBuffer(nbS)
+        b0 = init_atomic_buffer(nbS)
+        b1 = init_atomic_buffer(nbS)
+        b2 = init_atomic_buffer(nbS)
+        b3 = init_atomic_buffer(nbS)
+        ptr_w = AtomicValue(0,ReentrantLock())
+        ptr_r = AtomicValue(0,ReentrantLock())
+        t_new = AtomicValue(0,ReentrantLock())
+        t_stop = AtomicValue(0,ReentrantLock())
+        return new(ptr_w,ptr_r,b0,b1,b2,b3,t_new,t_stop)
+    end
 end
 
 
@@ -53,18 +63,6 @@ function init_atomic_buffer(nbS)
     arr = zeros(ComplexF32,nbS)
     lock = ReentrantLock()
     return AtomicBuffer(lock,arr)
-end
-
-function init_circ_buff(nbS)
-    b0 = init_atomic_buffer(nbS)
-    b1 = init_atomic_buffer(nbS)
-    b2 = init_atomic_buffer(nbS)
-    b3 = init_atomic_buffer(nbS)
-    ptr_w = AtomicValue(0,ReentrantLock())
-    ptr_r = AtomicValue(0,ReentrantLock())
-    t_new = AtomicValue(0,ReentrantLock())
-    t_stop = AtomicValue(0,ReentrantLock())
-    return AtomicCircularBuffer(ptr_w,ptr_r,b0,b1,b2,b3,t_new,t_stop)
 end
 
 @inline function atomic_read(ptr::AtomicValue)

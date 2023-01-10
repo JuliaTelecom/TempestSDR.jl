@@ -66,7 +66,7 @@ function configure_sdr(args...;bufferSize=1024,kw...)
     sdr = openSDR(args...;kw...)
     # --- Configure the circular buffer 
     buffer  = zeros(ComplexF32,bufferSize)
-    circ_buff = init_circ_buff(bufferSize)
+    circ_buff = AtomicCircularBuffer(bufferSize)
 
     return CircularSDR(sdr,buffer,circ_buff,0,0,0)
 end
@@ -112,6 +112,7 @@ end
 function circ_consummer(csdr) 
     cnt = 0 
     buffer = similar(csdr.buffer)
+    buffer_abs = zeros(Float32,length(buffer))
     local_stop = false
     global INTERRUPT = false
     try 
@@ -119,6 +120,9 @@ function circ_consummer(csdr)
         while (local_stop == false )
             # --- Classic SDR call 
             circ_take!(buffer,csdr.circ_buff)            
+            # Abs
+            buffer_abs .= abs2.(buffer)
+            #
             csdr.nbProcessed += 1
             cnt += 1
             yield()
