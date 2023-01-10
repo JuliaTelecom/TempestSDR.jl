@@ -7,25 +7,10 @@ using Base: PipeEndpoint
 # --- Dependencies 
 # ---------------------------------------------------- 
 using AbstractSDRs 
+import AbstractSDRs:AbstractSDR
 import Base:close 
+using Reexport 
 
-# ----------------------------------------------------
-# --- Structure 
-# ---------------------------------------------------- 
-mutable struct _CircularSDR_3{T}
-    sdr::T
-    buffer::Vector{ComplexF32}
-    channel::Channel
-    depth::Int                   # Number of channels in the circular buffer
-    nbStored::Int                # Number of stored buffers 
-    nbDropped::Int               # Number of dropped buffers 
-    nbProcessed::Int               # Number of read buffers
-end
-CircularSDR = _CircularSDR_3
-
-
-
-INTERRUPT::Bool = false
 
 # ----------------------------------------------------
 # --- Exportation 
@@ -37,6 +22,30 @@ export circ_consummer
 export circ_stop
 export close 
 
+# ----------------------------------------------------
+# --- Atomic circular buffers 
+# ---------------------------------------------------- 
+include("AtomicCircularBuffers.jl")
+@reexport using .AtomicCircularBuffers
+
+
+# ----------------------------------------------------
+# --- Global variables 
+# ---------------------------------------------------- 
+INTERRUPT::Bool = false
+
+
+# ----------------------------------------------------
+# --- Structure 
+# ---------------------------------------------------- 
+mutable struct CircularSDR 
+    sdr::AbstractSDR 
+    buffer::Vector{ComplexF32} 
+    circ_buff::AtomicCircularBuffer 
+    nbStored::Int 
+    nbDropped::Int 
+    nbProcessed::Int
+end
 
 
 # ----------------------------------------------------
@@ -50,21 +59,21 @@ function circ_stop(csdr)
 end
 
 
-
 """ Open and configure the SDR 
 Configure also the circular buffer used for data managment 
 """
-function configure_sdr(args...;depth = 5,bufferSize=1024,kw...)
+function configure_sdr(args...;bufferSize=1024,kw...)
     sdr = openSDR(args...;kw...)
     # --- Configure the circular buffer 
     buffer  = zeros(ComplexF32,bufferSize)
-    channel  = Channel{Vector{ComplexF32}}(3)
+    circ_buff = init_circ_buff(bufferSize)
 
-    return CircularSDR(sdr,buffer,channel,depth,0,0,0)
+    return CircularSDR(sdr,buffer,circ_buff,0,0,0)
 end
 
 
 function close(csdr::CircularSDR) 
+    AtomicCircularBuffers.atomic_stop(csdr.circ_buff)
     close(csdr.sdr)
 end
 
@@ -84,9 +93,8 @@ function circ_producer(csdr::CircularSDR)
             # --- Classic SDR call 
             recv!(csdr.buffer,csdr.sdr)
             yield()
-            # --- Push on the channel 
-            csdr.nbStored += circ_put!(csdr.channel,csdr.buffer)
-            #print(".")
+            # --- Push on the atomic circular buffer
+            circ_put!(csdr.circ_buff,csdr.buffer)
             csdr.nbStored += 1
             cnt += 1
             #(mod(cnt,100) && print("."))
@@ -98,45 +106,29 @@ function circ_producer(csdr::CircularSDR)
     return cnt
 end
 
-
-""" Put `data` in `channel`. If no space is available in the channel then remove oldest item.
-"""
-function circ_put!(channel::Channel,data)
-    dropped = 0
-    while(channel.n_avail_items >= channel.sz_max)
-        take!(channel)
-        dropped += 1
-        yield()
-    end 
-    put!(channel,deepcopy(data)) 
-    return dropped 
-end
-
 # ----------------------------------------------------
 # --- Consummer 
 # ---------------------------------------------------- 
-
-
-"""" Get a buffer from the radio that uses a circular buffer. Performs an AM demodulation
-"""
-function circ_take!(csdr::CircularSDR)
-    buff = take!(csdr.channel)
-    #return abs2.(buff)
-end
-
-
 function circ_consummer(csdr) 
-   cnt = 0 
+    cnt = 0 
+    buffer = similar(csdr.buffer)
+    local_stop = false
     global INTERRUPT = false
     try 
         # While loop to have continunous streaming 
-        while (!INTERRUPT)
+        while (local_stop == false )
             # --- Classic SDR call 
-            buffer = circ_take!(csdr)            
+            circ_take!(buffer,csdr.circ_buff)            
             csdr.nbProcessed += 1
             cnt += 1
             yield()
-            println(buffer[1])
+            # Wait to empty the circular buffer
+            if INTERRUPT == true 
+                if AtomicCircularBuffers.atomic_read(csdr.circ_buff.t_new) == 0
+                    local_stop = true 
+                end
+            end
+            #println(buffer[1])
             #Main.infiltrate(@__MODULE__, Base.@locals, @__FILE__, @__LINE__)
             #(mod(cnt,100) && print("."))
         end
