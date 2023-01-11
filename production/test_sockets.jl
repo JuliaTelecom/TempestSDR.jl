@@ -9,7 +9,7 @@ acquisition   = 0.5
 
 nbS = Int( samplingRate * acquisition)
 sigRx = repeat(1:8,1,nbS)'[:]
-csdr = configure_sdr(:pluto,carrierFreq,samplingRate,gain;addr="usb:1.8.5",depth=256,buffer=sigRx,bufferSize=nbS,packetSize=nbS)
+csdr = configure_sdr(:radiosim,carrierFreq,samplingRate,gain;addr="usb:1.8.5",depth=256,buffer=sigRx,bufferSize=nbS,packetSize=nbS)
 
 
 task_producer = @async circ_producer(csdr) 

@@ -66,7 +66,7 @@ function configure_sdr(args...;bufferSize=1024,kw...)
     sdr = openSDR(args...;kw...)
     # --- Configure the circular buffer 
     buffer  = zeros(ComplexF32,bufferSize)
-    circ_buff = AtomicCircularBuffer(bufferSize)
+    circ_buff = AtomicCircularBuffer(bufferSize,4)
 
     return CircularSDR(sdr,buffer,circ_buff,0,0,0)
 end
@@ -132,7 +132,6 @@ function circ_consummer(csdr)
                     local_stop = true 
                 end
             end
-            #println(buffer[1])
             #Main.infiltrate(@__MODULE__, Base.@locals, @__FILE__, @__LINE__)
             #(mod(cnt,100) && print("."))
         end
