@@ -61,27 +61,35 @@ end
 # --- Atomic functions 
 # ---------------------------------------------------- 
 
-
+""" Safely read an atomic value 
+"""
 @inline function atomic_read(ptr::AtomicValue)
     lock(ptr.lock) do 
         return ptr.ptr
     end
 end
 
+""" Safely read an atomic buffer circularly
+"""
 function atomic_read(buffer::AtomicBuffer,i::Int)
     lock(buffer.lock[1+i]) do 
         return buffer.buffer[i*buffer.nEch .+ (1:buffer.nEch)] 
     end
 end
 
-
-@inline function atomic_update(ptr::AtomicValue) 
+""" Update the counter position for read/write, in a safe way 
+"""
+@inline function atomic_update(ptr::AtomicValue,depth) 
     lock(ptr.lock) do 
-        ptr.ptr = mod(ptr.ptr+1,4)
+        ptr.ptr = mod(ptr.ptr+1,depth)
     end
 end
 
+""" Safely write a buffer in the atomic circular buffer.
+It assumes that data has the same size as the buffer 
+"""
 function atomic_write(buffer::AtomicBuffer,data,i)
+    @assert length(data) == buffer.nEch "When filling the atomic circular buffer data (length $(length(data))) should have the same size as the internal buffer (length $(buffer.nEch))"
     lock(buffer.lock[1+i]) do 
         buffer.buffer[i*buffer.nEch .+ (1:buffer.nEch)]  = deepcopy(data)
     end
@@ -90,9 +98,9 @@ end
 
 """ Value that states a new data is available 
 """ 
-function atomic_prodData(ptr::AtomicValue) 
+function atomic_prodData(ptr::AtomicValue,depth) 
     lock(ptr.lock) do 
-        ptr.ptr = min(ptr.ptr+1,4)
+        ptr.ptr = min(ptr.ptr+1,depth)
     end
 end
 
@@ -133,9 +141,9 @@ function circ_put!(circ_buff::AtomicCircularBuffer,data)
     # Put data 
     atomic_write(circ_buff.buffer,data,pos)
     # Update pointer 
-    atomic_update(circ_buff.ptr_write)
+    atomic_update(circ_buff.ptr_write,circ_buff.buffer.depth)
     # New data 
-    atomic_prodData(circ_buff.t_new)
+    atomic_prodData(circ_buff.t_new,circ_buff.buffer.depth)
     yield()
 end 
 
@@ -151,7 +159,7 @@ function circ_take!(buffer,circ_buff::AtomicCircularBuffer)
     # Put data 
     buffer.= atomic_read(circ_buff.buffer,pos)
     # Update pointer 
-    atomic_update(circ_buff.ptr_read)
+    atomic_update(circ_buff.ptr_read,circ_buff.buffer.depth)
     atomic_consData(circ_buff.t_new)
 end
 
