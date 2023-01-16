@@ -66,7 +66,7 @@ function configure_sdr(args...;bufferSize=1024,kw...)
     sdr = openSDR(args...;kw...)
     # --- Configure the circular buffer 
     buffer  = zeros(ComplexF32,bufferSize)
-    circ_buff = AtomicCircularBuffer(bufferSize,4)
+    circ_buff = AtomicCircularBuffer{ComplexF32}(bufferSize,4)
 
     return CircularSDR(sdr,buffer,circ_buff,0,0,0)
 end
@@ -91,16 +91,17 @@ function circ_producer(csdr::CircularSDR)
         # While loop to have continunous streaming 
         while (!INTERRUPT)
             # --- Classic SDR call 
-            recv!(csdr.buffer,csdr.sdr)
+            @async recv!(csdr.buffer,csdr.sdr)
             yield()
             # --- Push on the atomic circular buffer
             circ_put!(csdr.circ_buff,csdr.buffer)
             csdr.nbStored += 1
             cnt += 1
+            print(".")
             #(mod(cnt,100) && print("."))
         end
     catch exception 
-        rethrow(exception)
+        #rethrow(exception)
     end
     @info "Stopping radio producer thread. Gathered $cnt buffers."
     return cnt
@@ -136,7 +137,7 @@ function circ_consummer(csdr)
             #(mod(cnt,100) && print("."))
         end
     catch exception 
-        rethrow(exception)
+        #rethrow(exception)
     end
     @info "Stopping radio consummer thread. Gathered $cnt buffers."
     return cnt

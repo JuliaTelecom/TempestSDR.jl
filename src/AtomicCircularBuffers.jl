@@ -19,40 +19,45 @@ export circ_put!
 """ Structure for Atomic (i.e Thread safe) buffer managment 
 The buffer will be written using `atomic_write` and read using `atomic_read`
 """
-mutable struct AtomicBuffer 
+mutable struct AtomicBuffer{T}
     lock::Vector{ReentrantLock}
-    buffer::Vector{ComplexF32}
+    buffer::Vector{T} ## Only store flat array
     nEch::Int 
     depth::Int
-    function AtomicBuffer(nEch::Int,depth::Int)
+#    function AtomicBuffer(nEch::Int,depth::Int)
+        #lock   = [ReentrantLock() for _ ∈ 1 : depth]
+        #buffer = zeros(ComplexF32,nEch * depth)
+        #return new{ComplexF32}(lock,buffer,nEch,depth)       
+    #end
+    function AtomicBuffer{T}(nEch::Int,depth::Int) where T
         lock   = [ReentrantLock() for _ ∈ 1 : depth]
-        buffer = zeros(ComplexF32,nEch * depth)
-        return new(lock,buffer,nEch,depth)       
+        buffer = zeros(T,nEch * depth)
+        return new{T}(lock,buffer,nEch,depth)    
     end
 end 
 
 """ Structure for Atomic (i.e Thread safe) variable managment 
 """
-mutable struct AtomicValue
-    ptr::Int 
+mutable struct AtomicValue{T}
+    ptr::T 
     lock::ReentrantLock 
 end
 
 """ Thread Safe circular buffer 
 """
-mutable struct AtomicCircularBuffer 
+mutable struct AtomicCircularBuffer{T}
     ptr_write::AtomicValue
     ptr_read::AtomicValue 
-    buffer::AtomicBuffer
+    buffer::AtomicBuffer{T}
     t_new::AtomicValue
     t_stop::AtomicValue
-    function AtomicCircularBuffer(nbS,depth)
-        buffer = AtomicBuffer(nbS,depth)
-        ptr_w  = AtomicValue(0,ReentrantLock())
-        ptr_r  = AtomicValue(0,ReentrantLock())
-        t_new  = AtomicValue(0,ReentrantLock())
-        t_stop = AtomicValue(0,ReentrantLock())
-        return new(ptr_w,ptr_r,buffer,t_new,t_stop)
+    function AtomicCircularBuffer{T}(nEch::Int,depth::Int) where T
+        buffer = AtomicBuffer{T}(nEch,depth)
+        ptr_w  = AtomicValue{Int}(0,ReentrantLock())
+        ptr_r  = AtomicValue{Int}(0,ReentrantLock())
+        t_new  = AtomicValue{Int}(0,ReentrantLock())
+        t_stop = AtomicValue{Int}(0,ReentrantLock())
+        return new{T}(ptr_w,ptr_r,buffer,t_new,t_stop)
     end
 end
 
