@@ -1,7 +1,8 @@
 
-
-
-using TempestSDR
+# ----------------------------------------------------
+# --- Multi process environnement 
+# ---------------------------------------------------- 
+include("../setMP.jl")
 
 # ----------------------------------------------------
 # --- SDR parameters 
@@ -34,7 +35,7 @@ end
 # ----------------------------------------------------
 # --- Init runtime 
 # ---------------------------------------------------- 
-runtime = init_tempestSDR_runtime(:pluto,carrierFreq,samplingRate,gain;addr="usb:1.7.5",depth=4,buffer=sigRx,bufferSize=nbS,packetSize=nbS,renderer=:makie)
+global runtime = init_tempestSDR_runtime(:pluto,carrierFreq,samplingRate,gain;addr="usb:0.9.5",depth=4,buffer=sigRx,bufferSize=nbS,packetSize=nbS,renderer=:makie)
 
 
 

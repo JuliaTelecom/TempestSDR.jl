@@ -10,7 +10,7 @@ using AbstractSDRs
 import AbstractSDRs:AbstractSDR
 import Base:close 
 using Reexport 
-
+using Distributed
 
 # ----------------------------------------------------
 # --- Exportation 
@@ -91,8 +91,12 @@ function circ_producer(csdr::CircularSDR)
         # While loop to have continunous streaming 
         while (!INTERRUPT)
             # --- Classic SDR call 
-            @async recv!(csdr.buffer,csdr.sdr)
-            yield()
+            # Not that classic as we remote fetch the recv call
+            future_recv = @spawnat :1 recv!(csdr.buffer,csdr.sdr)
+            task_recv = @async isready(future_recv)
+            while !(istaskdone(task_recv))
+                yield() 
+            end
             # --- Push on the atomic circular buffer
             circ_put!(csdr.circ_buff,csdr.buffer)
             csdr.nbStored += 1
@@ -101,7 +105,7 @@ function circ_producer(csdr::CircularSDR)
             #(mod(cnt,100) && print("."))
         end
     catch exception 
-        #rethrow(exception)
+        rethrow(exception)
     end
     @info "Stopping radio producer thread. Gathered $cnt buffers."
     return cnt

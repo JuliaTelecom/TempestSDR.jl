@@ -1,4 +1,4 @@
-# This file automatically configure the current project to use all the avaliable Julia workers. Be sure julia is laucnhed with `-p x` with `x`the number of desired workers
+# This file automatically configure the current project to use all the avaliable Julia workers. Be sure julia is launched with `-p x` with `x`the number of desired workers
 
 using Distributed 
 if nprocs() > 1 

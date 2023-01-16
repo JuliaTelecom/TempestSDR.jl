@@ -8,7 +8,6 @@ using FFTW
 using Images
 using AbstractSDRs
 using Distributed 
-using Plots
 
 
 # ----------------------------------------------------
