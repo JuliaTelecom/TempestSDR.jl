@@ -92,17 +92,18 @@ function circ_producer(csdr::CircularSDR)
         while (!INTERRUPT)
             # --- Classic SDR call 
             # Not that classic as we remote fetch the recv call
-            future_recv = @spawnat :1 recv!(csdr.buffer,csdr.sdr)
+            pid = 2
+            future_recv = Future(pid)
+            errormonitor(@async put!(future_recv, remotecall(recv,pid,csdr.sdr,length(csdr.buffer))))
             task_recv = @async isready(future_recv)
             while !(istaskdone(task_recv))
                 yield() 
             end
+            buffer = fetch(fetch(future_recv))
             # --- Push on the atomic circular buffer
-            circ_put!(csdr.circ_buff,csdr.buffer)
+            circ_put!(csdr.circ_buff,buffer)
             csdr.nbStored += 1
             cnt += 1
-            print(".")
-            #(mod(cnt,100) && print("."))
         end
     catch exception 
         rethrow(exception)

@@ -143,9 +143,7 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
             #for _ = 1 : 2
             circ_take!(sigId,csdr.circ_buff)
             sigAbs .= abs2.(sigId)
-            println("-")
             for n in 1:1#nbIm - 2 
-                println("x")
                 theView = @views sigAbs[n*image_size_down .+ (1:image_size_down)]
                  #Getting an image from the current buffer 
                 image_mat = transpose(reshape(imresize(theView,image_size),x_t,y_t))
@@ -163,7 +161,6 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
                 imageOut = (1-α) * imageOut .+ α * image_mat
                  #Putting data  
                 circ_put!(runtime.atomicImage,imageOut[:])
-                println("."); (mod(n,10) == 0 && println(" "))
                 cnt += 1
             end
             yield()
@@ -193,7 +190,6 @@ function image_rendering(runtime::TempestSDRRuntime)
     while (INTERRUPT == false)
         # Get a new image 
         circ_take!(_tmp,runtime.atomicImage)
-        println("x")
         imageOut .= reshape(_tmp,y_t,x_t)
         cnt += 1
         if runtime.renderer == :gtk 

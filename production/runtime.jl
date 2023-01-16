@@ -4,20 +4,6 @@
 # ---------------------------------------------------- 
 include("../setMP.jl")
 
-# ----------------------------------------------------
-# --- SDR parameters 
-# ---------------------------------------------------- 
-carrierFreq  = 764e6
-samplingRate = 8e6
-gain         = 20 
-acquisition   = 0.5 
-
-# ----------------------------------------------------
-# --- Instantiate radio 
-# ---------------------------------------------------- 
-nbS = Int( samplingRate * acquisition)
-
-
 try 
     if IS_LOADED == false 
         rethrow(InterruptException())
@@ -35,40 +21,49 @@ end
 # ----------------------------------------------------
 # --- Init runtime 
 # ---------------------------------------------------- 
-global runtime = init_tempestSDR_runtime(:pluto,carrierFreq,samplingRate,gain;addr="usb:0.9.5",depth=4,buffer=sigRx,bufferSize=nbS,packetSize=nbS,renderer=:makie)
-
-
-
-# ----------------------------------------------------
-# --- Start radio thread 
-# ---------------------------------------------------- 
-task_producer = @async circ_producer(runtime.csdr) 
-
-
-# ----------------------------------------------------
-# --- First extract autocorrelation properties 
-# ---------------------------------------------------- 
-extract_configuration(runtime)
-
-# ----------------------------------------------------
-# --- Launching image generation 
-# ---------------------------------------------------- 
-task_rendering  = @async image_rendering(runtime)
-task_consummer  = @async coreProcessing(runtime)
-
-# ----------------------------------------------------
-# --- Image rendering 
-# ---------------------------------------------------- 
-#try 
+function start_runtime()
+    # ----------------------------------------------------
+    # --- SDR parameters 
+    # ---------------------------------------------------- 
+    carrierFreq  = 764e6
+    samplingRate = 8e6
+    gain         = 20 
+    acquisition   = 0.5 
+    # ----------------------------------------------------
+    # --- Instantiate radio 
+    # ---------------------------------------------------- 
+    nbS = Int( samplingRate * acquisition)
+    global runtime = init_tempestSDR_runtime(:pluto,carrierFreq,samplingRate,gain;addr="usb:0.4.5",depth=4,buffer=sigRx,bufferSize=nbS,packetSize=nbS,renderer=:makie)
+    # ----------------------------------------------------
+    # --- Start radio thread 
+    # ---------------------------------------------------- 
+    task_producer = @async circ_producer(runtime.csdr) 
+    # ----------------------------------------------------
+    # --- First extract autocorrelation properties 
+    # ---------------------------------------------------- 
+    #extract_configuration(runtime)
+    # ----------------------------------------------------
+    # --- Launching image generation 
+    # ---------------------------------------------------- 
+    #task_rendering  = @async image_rendering(runtime)
+    #task_consummer  = @async coreProcessing(runtime)
+    # ----------------------------------------------------
+    # --- Image rendering 
+    # ---------------------------------------------------- 
+    #try 
     #image_rendering(runtime)
-#catch exception 
+    #catch exception 
     #@info "Interruption" 
     #println(exception)
-#end
-
+    #end
+    #return (;runtime,task_producer,task_consummer,task_rendering)
+    return (;runtime,task_producer)
+end
 
 # ----------------------------------------------------
 # --- Stopping runtime 
 # ---------------------------------------------------- 
+#(runtime, task_producer,task_consummer,task_rendering) = start_runtime()
+tup = start_runtime()
 sleep(20)
-stop_processing(runtime)
+stop_processing(tup.runtime)
