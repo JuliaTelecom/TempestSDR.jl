@@ -177,11 +177,11 @@ anImage = toImage(sigId,4_200_000,Fs,finalConfig)
 # ---------------------------------------------------- 
 vSync = init_vsync(anImage)
 tup = vSync(anImage)
-terminal_with_sync(anImage,tup[2][2],tup[1][2])
+#terminal_with_sync(anImage,tup[2][2],tup[1][2])
 
 
 τ = tup[2][2] * finalConfig.width + tup[1][2]
 idx = Int(floor(τ / (finalConfig.width * finalConfig.height)  / fv * Fs))
 
 anImage = toImage(sigId,4_200_000 +idx, Fs,finalConfig)
-terminal(anImage)
+#terminal(anImage)

@@ -10,7 +10,6 @@ using Gtk
 # For terminal renderer 
 using ImageInTerminal
 #using Sixel
-
 # ----------------------------------------------------
 # --- Exportation 
 # ---------------------------------------------------- 
@@ -27,20 +26,21 @@ export terminal_with_sync
 """
 function initScreenRenderer(nbLines,nbColumn)
     mat = zeros(nbLines,nbColumn)
+    fullScale!(mat)
     guidict = ImageView.imshow(mat)
     return guidict 
 end
 
 function displayScreen!(p,img)
     canvas = p["gui"]["canvas"] 
-    fullScale!(img)
-    imshow(canvas,img)
-    #Gtk.set_gtk_property!(p, :margin_top, 0)
-        #@async Gtk.gtk_main()
-        #reveal(p, true)
-    Gtk.showall(p["gui"]["window"])
-    sleep(0.000001)
+    img2 = fullScale!(img)
+    imshow(canvas,img2)
+    sleep(0.1) 
     yield()
+    #Gtk.set_gtk_property!(p, :margin_top, 0)
+    #@async Gtk.gtk_main()
+    #reveal(p, true)
+    #Gtk.showall(p["gui"]["window"])
     #Libc.systemsleep(0.001)
     #reveal(p["gui"]["window"],true)
 end

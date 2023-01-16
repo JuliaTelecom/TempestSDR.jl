@@ -1,28 +1,64 @@
 INTERRUPT::Bool = false 
 
 
-"""" Calculat ethe a priori configuration of the received iage and returns a Video configuration 
+mutable struct TempestSDRRuntime
+    csdr::CircularSDR 
+    config::VideoMode
+    renderer::Symbol
+    #screen::Union{String,Nothing,Dict}
+    screen::Any
+    atomicImage::AtomicCircularBuffer
+end
+
+
+function init_tempestSDR_runtime(args...;bufferSize=1024,renderer=:gtk,kw...)
+    # --- Configure the SDR 
+    csdr = configure_sdr(args...;bufferSize,kw...)
+    # --- Configure the Video 
+    # This is a default value here, we maybe can do better
+    config = VideoMode(1024,768,60) 
+    # --- Init the screen renderer 
+    if renderer == :gtk
+        screen = nothing
+    elseif renderer == :makie 
+        screen = nothing 
+    else 
+        screen = "Terminal"
+    end
+    atomicImage = AtomicCircularBuffer{Float32}(config.height * config.width,4)
+    return TempestSDRRuntime(csdr,config,renderer,screen,atomicImage)
+end
+
+
+
+
+"""" Calculate the a priori configuration of the received iage and returns a Video configuration 
 """ 
-function extract_configuration(csdr::CircularSDR)
+function extract_configuration(runtime::TempestSDRRuntime)
     @info "Search screen configuration in given signal."
-    print(csdr.sdr)
+    print(runtime.csdr.sdr)
     # ----------------------------------------------------
     # --- Get long signal to compute metrics 
     # ---------------------------------------------------- 
     # --- Core parameters for the SDR 
-    Fs = getSamplingRate(csdr.sdr)
+    Fs = getSamplingRate(runtime.csdr.sdr)
     # --- Number of buffers used for configuration calculation 
-    nbBuffer = 3 
+    nbBuffer = 4
     # Instantiate a long buffer to get all the data from the SDR 
-    buffSize = length(csdr.buffer)
+    buffSize = length(runtime.csdr.buffer)
     sigCorr  = zeros(ComplexF32, nbBuffer * buffSize) 
+    _tmp    = zeros(ComplexF32, buffSize)
     # Fill this buffer 
     for n ∈ 1 : nbBuffer 
-        sigCorr[ (n-1)*buffSize .+ (1:buffSize)] = circular_sdr_take(csdr)
-        print(".")
+        # Getting buffer from radio 
+        circ_take!(_tmp,runtime.csdr.circ_buff)
+        println(runtime.csdr.circ_buff.ptr_write.ptr)
+        sigCorr[ (n-1)*buffSize .+ (1:buffSize)] .= abs2.(_tmp)
     end
     @info "Calculate the correlation"
     # Calculate the autocorrelation for this buffer 
+    #global DUMP_CORR = sigCorr
+    #sigCorr = Main.DUMP
     (Γ,τ) = calculate_autocorrelation(sigCorr,Fs,0,1/10)
     rates_large,Γ_short_large = zoom_autocorr(Γ,Fs;rate_min=50,rate_max=90)
     # ----------------------------------------------------
@@ -50,26 +86,47 @@ function extract_configuration(csdr::CircularSDR)
     theConfig = TempestSDR.allVideoConfigurations["1920x1200 @ 60Hz"]
     finalConfig = VideoMode(theConfig.width,1235,fv)
     @info "Chosen configuration found is $(find_configuration(theConfig)) => $finalConfig"
-    return finalConfig
+    # ----------------------------------------------------
+    # --- Update runtime 
+    # ---------------------------------------------------- 
+    runtime.config = finalConfig 
+    runtime.atomicImage = AtomicCircularBuffer{Float32}(finalConfig.height * finalConfig.width,4)
+    if runtime.renderer == :gtk 
+        runtime.screen = initScreenRenderer(finalConfig.height,finalConfig.width)
+        #body!(wnd, vbox(zeros(finalConfig.height,finalConfig.width))
+    elseif runtime.renderer == :makie 
+        runtime.screen = MakieRendererScreen(finalConfig.height,finalConfig.width)
+    end
+    sleep(0.1)
 end
 
 
-function coreProcessing(csdr::CircularSDR,theConfig::VideoMode;renderer=:gtk)     # Extract configuration 
+function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration 
+    # ----------------------------------------------------
+    # --- Overall parameters 
+    # ---------------------------------------------------- 
+    global INTERRUPT = false 
+    csdr = runtime.csdr
+    theConfig = runtime.config
+    # ----------------------------------------------------
+    # --- Radio parameters 
+    # ---------------------------------------------------- 
     Fs = getSamplingRate(csdr.sdr)
     x_t = theConfig.width    # Number of column
     y_t = theConfig.height   # Number of lines 
     fv  = theConfig.refresh
+    #  Signal from radio 
+    sigId = zeros(ComplexF32, csdr.circ_buff.buffer.nEch)
+    sigAbs = zeros(Float32, csdr.circ_buff.buffer.nEch)
     # Image format 
     image_size_down = round( Fs /fv) |> Int
     image_size = x_t * y_t |> Int # Size of final image 
-    nbIm = length(csdr.buffer) ÷ image_size_down   # Number of image at SDR rate 
+    @show nbIm = length(csdr.buffer) ÷ image_size_down   # Number of image at SDR rate 
     T = Float32
     image_mat = zeros(T,y_t,x_t)
     # ----------------------------------------------------
     # --- Image renderer 
     # ---------------------------------------------------- 
-    channelImages = Channel{Array{Float32}}(32)
-    @spawnat 2 image_rendering(channelImages,x_t,y_t,renderer)
     imageOut = zeros(T,y_t,x_t)
     # Frame sync 
     vSync = init_vsync(image_mat)
@@ -80,70 +137,82 @@ function coreProcessing(csdr::CircularSDR,theConfig::VideoMode;renderer=:gtk)   
     cnt = 0
     α = 0.9
     τ = 0
+    do_align = false
     try 
-        #while(true)
-        for _ = 1 : 2
-            
-            sigId = circular_sdr_take(csdr)
-            for n in 1:nbIm - 1 
-                theView = @views sigId[n*image_size_down .+ (1:image_size_down)]
-                # Getting an image from the current buffer 
+        while(INTERRUPT == false)
+            #for _ = 1 : 2
+            circ_take!(sigId,csdr.circ_buff)
+            sigAbs .= abs2.(sigId)
+            println("-")
+            for n in 1:1#nbIm - 2 
+                println("x")
+                theView = @views sigAbs[n*image_size_down .+ (1:image_size_down)]
+                 #Getting an image from the current buffer 
                 image_mat = transpose(reshape(imresize(theView,image_size),x_t,y_t))
                 # Frame synchronisation  
-                tup = vSync(image_mat)
-                # Calculate Offset in the image 
-                τ_pixel = (tup[1][2]-1)
-                τ = Int(floor(τ_pixel / (x_t*y_t)  / fv * Fs))
-                # Rescale image to have the sync image
-                theView = @views sigId[τ+n*image_size_down .+ (1:image_size_down)]
-                image_mat = transpose(reshape(imresize(theView,image_size),x_t,y_t))
+                if do_align
+                    tup = vSync(image_mat)
+                    # Calculate Offset in the image 
+                    τ_pixel = (tup[1][2]-1)
+                    τ = Int(floor(τ_pixel / (x_t*y_t)  / fv * Fs))
+                    # Rescale image to have the sync image
+                    theView = @views sigAbs[τ+n*image_size_down .+ (1:image_size_down)]
+                    image_mat = transpose(reshape(imresize(theView,image_size),x_t,y_t))
+                end
                 # Low pass filter
                 imageOut = (1-α) * imageOut .+ α * image_mat
-                # Putting data  
-                circular_put!(channelImages,imageOut)
-                #println("."); (mod(n,10) == 0 && println(" "))
+                 #Putting data  
+                circ_put!(runtime.atomicImage,imageOut[:])
+                println("."); (mod(n,10) == 0 && println(" "))
                 cnt += 1
-                yield()
             end
+            yield()
         end
     catch exception 
-        rethrow(exception)
+        #rethrow(exception)
     end
     tFinal = time() - tInit 
     rate = Int(floor(nbIm / tFinal))
-    @info "Image rate is $rate images per seconds"
+    @info "Process $cnt Images in $tFinal seconds"
     return imageOut
 end
 
 
-function image_rendering(channelImage::Channel,x_t,y_t,renderer=:gtk)
-    # Init renderer if Gtk 
-    if renderer == :gtk
-        screen = initScreenRenderer(y_t,x_t)
-    end
+function image_rendering(runtime::TempestSDRRuntime)
+    # ----------------------------------------------------
+    # --- Extract parameters 
+    # ---------------------------------------------------- 
+    x_t = runtime.config.width 
+    y_t = runtime.config.height 
+    # Init vectors
+    _tmp = zeros(Float32,x_t*y_t)
+    imageOut = zeros(Float32,y_t,x_t)
     # Loop for rendering 
     global INTERRUPT = false 
+    cnt = 0
     while (INTERRUPT == false)
         # Get a new image 
-        imageOut = take!(channelImage)
-        #image_mat .= reshape(sigOut[1:Int(x_t*y_t)],Int(x_t),Int(y_t))
-        if renderer == :gtk 
+        circ_take!(_tmp,runtime.atomicImage)
+        println("x")
+        imageOut .= reshape(_tmp,y_t,x_t)
+        cnt += 1
+        if runtime.renderer == :gtk 
             # Using External Gtk display
-            displayScreen!(screen,imageOut)
+            displayScreen!(runtime.screen,imageOut)
+        elseif runtime.renderer == :makie 
+            displayMakieScreen!(runtime.screen,imageOut)
         else 
             # Plot using Terminal 
             terminal(imageOut)
         end
-        yield()
     end
+    return cnt
 end
 
 
-
-
-function stop_processing(csdr)
+function stop_processing(runtime::TempestSDRRuntime)
     global INTERRUPT = true 
-    circular_sdr_stop()
-    close(csdr.sdr)
+    circ_stop(runtime.csdr)
+    close(runtime.csdr.sdr)
 end
 
