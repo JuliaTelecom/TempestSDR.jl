@@ -90,6 +90,7 @@ function start_remote_sdr(channel,buffsize,args...;kw...) # launched with @spawn
         while (INTERRUPT_REMOTE == false)
             # --- Classic SDR call 
             recv!(buffer,sdr)
+            sleep(0.1) #FIXME for radiosim to avoid throttle 
             # Put in remote 
             put!(channel,buffer) # Depth 1, will not block as circ_producer consummes it
             # 
@@ -118,7 +119,7 @@ function circ_producer(csdr::CircularSDR)
         while (!INTERRUPT)
             # --- Classic SDR call 
             # RemoteChannel call 
-            while (!isready(csdr.channel))
+            while (!isready(csdr.channel)) 
                 yield()
             end
             buffer = take!(csdr.channel)
@@ -133,6 +134,10 @@ function circ_producer(csdr::CircularSDR)
     @info "Stopping radio producer thread. Gathered $cnt buffers."
     return cnt
 end
+
+
+
+
 
 # ----------------------------------------------------
 # --- Consummer 
