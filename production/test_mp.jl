@@ -18,6 +18,9 @@ include("../setMP.jl")
 #global IS_LOADED = true 
 #end
 #end
+PID_SDR = TempestSDR.PID_SDR
+
+
 
 function start_runtime(duration)
     # ----------------------------------------------------
@@ -26,15 +29,15 @@ function start_runtime(duration)
     carrierFreq  = 764e6
     samplingRate = 8e6
     gain         = 20 
-    acquisition   = 0.025
+    acquisition   = 0.05
     nbS = Int( samplingRate * acquisition)
 
     # ----------------------------------------------------
     # --- Remote SDR call 
     # ---------------------------------------------------- 
-    global channel = RemoteChannel(()->Channel{Vector{ComplexF32}}(1), 2)
+    global channel = RemoteChannel(()->Channel{Vector{ComplexF32}}(1), PID_SDR)
     #future_prod = @spawnat 2 start_remote_sdr(channel,nbS,:pluto,carrierFreq,samplingRate,gain;depth=4,addr="usb:0.10.5",buffer=sigRx,bufferSize=UInt64(nbS),packetSize=nbS)
-    future_prod = @spawnat 2 start_remote_sdr(channel,nbS,:pluto,carrierFreq,samplingRate,gain;depth=4,addr="usb:0.4.5",packetSize=nbS)
+    future_prod = @spawnat PID_SDR start_remote_sdr(channel,nbS,:pluto,carrierFreq,samplingRate,gain;depth=4,addr="usb:0.4.5",packetSize=nbS)
 
 
     # ----------------------------------------------------
@@ -63,7 +66,7 @@ function start_runtime(duration)
     sleep(duration) 
     @info "Stopping all threads"
     # Stopping SDR call 
-    remote_do(stop_remote_sdr,2)
+    remote_do(stop_remote_sdr,PID_SDR)
     sleep(0.1)
     # Stopping other calls
     stop_processing()
