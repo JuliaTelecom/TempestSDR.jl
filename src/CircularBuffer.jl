@@ -17,9 +17,10 @@ using Distributed
 # ---------------------------------------------------- 
 export CircularSDR
 export configure_sdr 
+export start_remote_sdr
+export stop_remote_sdr
 export circ_producer
 export circ_consummer
-export circ_stop
 export close 
 
 # ----------------------------------------------------
@@ -33,13 +34,15 @@ include("AtomicCircularBuffers.jl")
 # --- Global variables 
 # ---------------------------------------------------- 
 INTERRUPT::Bool = false
+INTERRUPT_REMOTE::Bool = false
 
 
 # ----------------------------------------------------
 # --- Structure 
 # ---------------------------------------------------- 
-mutable struct CircularSDR 
-    sdr::AbstractSDR 
+mutable struct CircularSDR  # On PID 1 (SDR on PID 2)
+    #sdr::AbstractSDR 
+    channel::RemoteChannel
     buffer::Vector{ComplexF32} 
     circ_buff::AtomicCircularBuffer 
     nbStored::Int 
@@ -51,33 +54,56 @@ end
 # ----------------------------------------------------
 # --- Manager
 # ---------------------------------------------------- 
-""" Stop the `circular_sdr_start` procedure.
-"""
-function circ_stop(csdr)
-    global INTERRUPT = true 
-    close(csdr)
+function stop_remote_sdr()
+    global INTERRUPT_REMOTE = true 
 end
 
 
 """ Open and configure the SDR 
 Configure also the circular buffer used for data managment 
 """
-function configure_sdr(args...;bufferSize=1024,kw...)
-    sdr = openSDR(args...;kw...)
+function configure_sdr(channel,bufferSize=1024)
+    #sdr = openSDR(args...;kw...)
     # --- Configure the circular buffer 
     buffer  = zeros(ComplexF32,bufferSize)
     circ_buff = AtomicCircularBuffer{ComplexF32}(bufferSize,4)
-
-    return CircularSDR(sdr,buffer,circ_buff,0,0,0)
+    return CircularSDR(channel,buffer,circ_buff,0,0,0)
 end
 
 
 function close(csdr::CircularSDR) 
     AtomicCircularBuffers.atomic_stop(csdr.circ_buff)
-    close(csdr.sdr)
+    #close(csdr.sdr)
 end
 
-
+function start_remote_sdr(channel,buffsize,args...;kw...) # launched with @spawnat 2 start_remote_sdr(...)
+    sdr = try openSDR(args...;kw...)
+    catch exception 
+        rethrow(exception)
+    end
+    print(sdr)
+    cnt = 0 
+    buffer = zeros(ComplexF32,buffsize)
+    global INTERRUPT_REMOTE = false
+    try 
+        # While loop to have continunous streaming 
+        while (INTERRUPT_REMOTE == false)
+            # --- Classic SDR call 
+            recv!(buffer,sdr)
+            # Put in remote 
+            put!(channel,buffer) # Depth 1, will not block as circ_producer consummes it
+            # 
+            #(mod(cnt,10) == 0) && (println("$INTERRUPT_REMOTE"))
+            yield()
+            cnt += 1
+        end
+    catch exception 
+        #rethrow(exception)
+    end
+    close(sdr)
+    @info "Stopping remote producer call. Gathered $cnt buffers"
+    return cnt
+end
 
 # ----------------------------------------------------
 # --- Producer 
@@ -91,22 +117,18 @@ function circ_producer(csdr::CircularSDR)
         # While loop to have continunous streaming 
         while (!INTERRUPT)
             # --- Classic SDR call 
-            # Not that classic as we remote fetch the recv call
-            pid = 2
-            future_recv = Future(pid)
-            errormonitor(@async put!(future_recv, remotecall(recv,pid,csdr.sdr,length(csdr.buffer))))
-            task_recv = @async isready(future_recv)
-            while !(istaskdone(task_recv))
-                yield() 
+            # RemoteChannel call 
+            while (!isready(csdr.channel))
+                yield()
             end
-            buffer = fetch(fetch(future_recv))
+            buffer = take!(csdr.channel)
             # --- Push on the atomic circular buffer
             circ_put!(csdr.circ_buff,buffer)
             csdr.nbStored += 1
             cnt += 1
         end
     catch exception 
-        rethrow(exception)
+        #rethrow(exception)
     end
     @info "Stopping radio producer thread. Gathered $cnt buffers."
     return cnt

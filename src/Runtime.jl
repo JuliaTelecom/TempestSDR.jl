@@ -11,9 +11,9 @@ mutable struct TempestSDRRuntime
 end
 
 
-function init_tempestSDR_runtime(args...;bufferSize=1024,renderer=:gtk,kw...)
+function init_tempestSDR_runtime(channel,bufferSize,renderer=:gtk)
     # --- Configure the SDR 
-    csdr = configure_sdr(args...;bufferSize,kw...)
+    csdr = configure_sdr(channel,bufferSize)
     # --- Configure the Video 
     # This is a default value here, we maybe can do better
     config = VideoMode(1024,768,60) 
@@ -36,12 +36,12 @@ end
 """ 
 function extract_configuration(runtime::TempestSDRRuntime)
     @info "Search screen configuration in given signal."
-    print(runtime.csdr.sdr)
     # ----------------------------------------------------
     # --- Get long signal to compute metrics 
     # ---------------------------------------------------- 
     # --- Core parameters for the SDR 
-    Fs = getSamplingRate(runtime.csdr.sdr)
+    # FIXME To be updated 
+    Fs = 8e6
     # --- Number of buffers used for configuration calculation 
     nbBuffer = 4
     # Instantiate a long buffer to get all the data from the SDR 
@@ -111,7 +111,8 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
     # ----------------------------------------------------
     # --- Radio parameters 
     # ---------------------------------------------------- 
-    Fs = getSamplingRate(csdr.sdr)
+    # FIXME To be updated 
+    Fs = 8e6
     x_t = theConfig.width    # Number of column
     y_t = theConfig.height   # Number of lines 
     fv  = theConfig.refresh
@@ -137,7 +138,7 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
     cnt = 0
     α = 0.9
     τ = 0
-    do_align = false
+    do_align = true
     try 
         while(INTERRUPT == false)
             #for _ = 1 : 2
@@ -158,7 +159,8 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
                     image_mat = transpose(reshape(imresize(theView,image_size),x_t,y_t))
                 end
                 # Low pass filter
-                imageOut = (1-α) * imageOut .+ α * image_mat
+                #imageOut = (1-α) * imageOut .+ α * image_mat
+                imageOut .= image_mat
                  #Putting data  
                 circ_put!(runtime.atomicImage,imageOut[:])
                 cnt += 1
@@ -166,7 +168,7 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
             yield()
         end
     catch exception 
-        #rethrow(exception)
+        rethrow(exception)
     end
     tFinal = time() - tInit 
     rate = Int(floor(nbIm / tFinal))
@@ -206,9 +208,9 @@ function image_rendering(runtime::TempestSDRRuntime)
 end
 
 
-function stop_processing(runtime::TempestSDRRuntime)
-    global INTERRUPT = true 
-    circ_stop(runtime.csdr)
-    close(runtime.csdr.sdr)
+function stop_processing()
+    global INTERRUPT = true
+    #circ_stop(runtime.csdr)
+    #close(runtime.csdr.sdr)
 end
 
