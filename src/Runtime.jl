@@ -41,12 +41,12 @@ function extract_configuration(runtime::TempestSDRRuntime)
     # ---------------------------------------------------- 
     # --- Core parameters for the SDR 
     # FIXME To be updated 
-    Fs = 8e6
+    Fs = 20e6
     # --- Number of buffers used for configuration calculation 
     nbBuffer = 4
     # Instantiate a long buffer to get all the data from the SDR 
     buffSize = length(runtime.csdr.buffer)
-    sigCorr  = zeros(ComplexF32, nbBuffer * buffSize) 
+    sigCorr  = zeros(Float32, nbBuffer * buffSize) 
     _tmp    = zeros(ComplexF32, buffSize)
     # Fill this buffer 
     for n ∈ 1 : nbBuffer 
@@ -57,8 +57,6 @@ function extract_configuration(runtime::TempestSDRRuntime)
     end
     @info "Calculate the correlation"
     # Calculate the autocorrelation for this buffer 
-    #global DUMP_CORR = sigCorr
-    #sigCorr = Main.DUMP
     (Γ,τ) = calculate_autocorrelation(sigCorr,Fs,0,1/10)
     rates_large,Γ_short_large = zoom_autocorr(Γ,Fs;rate_min=50,rate_max=90)
     # ----------------------------------------------------
