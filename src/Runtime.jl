@@ -110,7 +110,7 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
     # --- Radio parameters 
     # ---------------------------------------------------- 
     # FIXME To be updated 
-    Fs = 8e6
+    Fs = 20e6
     x_t = theConfig.width    # Number of column
     y_t = theConfig.height   # Number of lines 
     fv  = theConfig.refresh
@@ -157,8 +157,8 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
                     image_mat = transpose(reshape(imresize(theView,image_size),x_t,y_t))
                 end
                 # Low pass filter
-                #imageOut = (1-α) * imageOut .+ α * image_mat
-                imageOut .= image_mat
+                imageOut = (1-α) * imageOut .+ α * image_mat
+                #imageOut .= image_mat
                  #Putting data  
                 circ_put!(runtime.atomicImage,imageOut[:])
                 cnt += 1
