@@ -93,18 +93,18 @@ config_multiple_recv = config_with_signal(theSig2,Fs)
 @assert config_ideal ≈ config_multiple_recv "Ideal config is not same as single small recv call"
 
 
-# Runtime model 
-PID_SDR = 1
-global channel = RemoteChannel(()->Channel{Vector{ComplexF32}}(1), PID_SDR)
-future_prod = @spawnat PID_SDR start_remote_sdr(channel,nbS,:radiosim,carrierFreq,buffer=sigRx,bufferSize=nbS,samplingRate,gain;depth=4,addr="usb:0.4.5",packetSize=nbS)
-runtime = init_tempestSDR_runtime(channel,nbS,:terminal)
-task_producer = @async circ_producer(runtime.csdr) 
-config_runtime = extract_configuration(runtime)
+## Runtime model 
+#PID_SDR = 1
+#global channel = RemoteChannel(()->Channel{Vector{ComplexF32}}(1), PID_SDR)
+#future_prod = @spawnat PID_SDR start_remote_sdr(channel,nbS,:radiosim,carrierFreq,buffer=sigRx,bufferSize=nbS,samplingRate,gain;depth=4,addr="usb:0.4.5",packetSize=nbS)
+#runtime = init_tempestSDR_runtime(channel,nbS,:terminal)
+#task_producer = @async circ_producer(runtime.csdr) 
+#config_runtime = extract_configuration(runtime)
 
-remote_do(stop_remote_sdr,PID_SDR)
-sleep(0.1)
-# Stopping other calls
-stop_processing()
+#remote_do(stop_remote_sdr,PID_SDR)
+#sleep(0.1)
+## Stopping other calls
+#stop_processing()
 
 
-@assert config_ideal ≈ runtime.config  "Ideal config is not same as runtime"
+#@assert config_ideal ≈ runtime.config  "Ideal config is not same as runtime"

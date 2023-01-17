@@ -134,15 +134,16 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
     tInit = time()
     ## 
     cnt = 0
-    α = 0.9
+    α = 1.0
     τ = 0
     do_align = true
     try 
         while(INTERRUPT == false)
             #for _ = 1 : 2
             circ_take!(sigId,csdr.circ_buff)
-            sigAbs .= abs2.(sigId)
-            for n in 1:1#nbIm - 2 
+            sigAbs .= abs.(sigId)
+            global DUMP = sigAbs
+            for n in 1:nbIm - 2 
                 theView = @views sigAbs[n*image_size_down .+ (1:image_size_down)]
                  #Getting an image from the current buffer 
                 image_mat = transpose(reshape(imresize(theView,image_size),x_t,y_t))
@@ -187,6 +188,7 @@ function image_rendering(runtime::TempestSDRRuntime)
     # Loop for rendering 
     global INTERRUPT = false 
     cnt = 0
+    tInit = time()
     while (INTERRUPT == false)
         # Get a new image 
         circ_take!(_tmp,runtime.atomicImage)
@@ -202,6 +204,8 @@ function image_rendering(runtime::TempestSDRRuntime)
             terminal(imageOut)
         end
     end
+    tFinal = time() - tInit 
+    @info "Render $cnt Images in $tFinal seconds"
     return cnt
 end
 
