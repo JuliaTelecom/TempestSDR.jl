@@ -102,7 +102,7 @@ function start_remote_sdr(channel,buffsize,args...;kw...) # launched with @spawn
     end
     close(sdr)
     @info "Stopping remote producer call. Gathered $cnt buffers"
-    return cnt
+    return cnt,sdr
 end
 
 # ----------------------------------------------------

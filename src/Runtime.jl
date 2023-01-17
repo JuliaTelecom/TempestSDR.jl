@@ -120,9 +120,9 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
     sigId = zeros(ComplexF32, csdr.circ_buff.buffer.nEch)
     sigAbs = zeros(Float32, csdr.circ_buff.buffer.nEch)
     # Image format 
-    image_size_down = round( Fs /fv) |> Int
+    @show image_size_down = round( Fs /fv) |> Int
     image_size = x_t * y_t |> Int # Size of final image 
-    @show nbIm = length(csdr.buffer) ÷ image_size_down   # Number of image at SDR rate 
+    nbIm = length(csdr.buffer) ÷ image_size_down   # Number of image at SDR rate 
     T = Float32
     image_mat = zeros(T,y_t,x_t)
     # ----------------------------------------------------
