@@ -67,11 +67,13 @@ function start_runtime(duration)
     @info "Stopping all threads"
     # Stopping SDR call 
     # Stopping other calls
-    stop_processing()
-    sleep(1.0)
     remote_do(stop_remote_sdr,PID_SDR)
+    sleep(1.0)
+    stop_processing()
     # Ensure producer stops 
     @async Base.throwto(tup.task_producer,InterruptException())
+    @async Base.throwto(tup.task_consummer,InterruptException())
+    @async Base.throwto(tup.task_rendering,InterruptException())
 
     return (;runtime,task_producer,task_consummer,task_rendering,future_prod)
 end

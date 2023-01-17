@@ -39,9 +39,11 @@ function start_runtime(duration)
     # ----------------------------------------------------
     # --- Remote SDR call 
     # ---------------------------------------------------- 
-    global channel = RemoteChannel(()->Channel{Vector{ComplexF32}}(2), PID_SDR)
-    future_prod = @spawnat PID_SDR start_remote_sdr(channel,nbS,:radiosim,carrierFreq,buffer=sigRx,bufferSize=nbS,samplingRate,gain;depth=4,addr="usb:0.4.5",packetSize=nbS)
+    global channel = RemoteChannel(()->Channel{Vector{ComplexF32}}(1), PID_SDR)
+    #future_prod = @spawnat PID_SDR start_remote_sdr(channel,nbS,:pluto,carrierFreq,buffer=sigRx,bufferSize=nbS,samplingRate,gain;depth=4,addr="usb:0.4.5",packetSize=nbS)
+    future_prod = @spawnat PID_SDR start_remote_sdr(channel,nbS,:pluto,carrierFreq,samplingRate,gain;depth=4,addr="usb:0.4.5",packetSize=nbS)
 
+    #@show fetch(future_prod)
 
     # ----------------------------------------------------
     # --- Instantiate radio 
@@ -71,9 +73,9 @@ function start_runtime(duration)
     @info "Stopping all threads"
     # Stopping SDR call 
     # Stopping other calls
-    stop_processing()
-    sleep(1.0)
     remote_do(stop_remote_sdr,PID_SDR)
+    sleep(1.0)
+    stop_processing()
     # Ensure producer stops 
     @async Base.throwto(tup.task_producer,InterruptException())
 
