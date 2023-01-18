@@ -2,7 +2,7 @@ INTERRUPT::Bool = false
 
 
 mutable struct TempestSDRRuntime
-    csdr::CircularSDR 
+    csdr::RemoteChannelSDR
     config::VideoMode
     renderer::Symbol
     screen::AbstractScreenRenderer

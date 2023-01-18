@@ -1,5 +1,4 @@
-module CircularBuffer 
-using Base: PipeEndpoint
+module RemoteChannelSDRs
 """ Module for managing data from the SDR with a circular buffer way. We will put all the received buffers in a circular buffer. With classic Julia Channels, `put!` will wait `pop`. In this proposed way the `push` will erase the oldest non poped data.
 """
 
@@ -15,7 +14,7 @@ using Distributed
 # ----------------------------------------------------
 # --- Exportation 
 # ---------------------------------------------------- 
-export CircularSDR
+export RemoteChannelSDR
 export configure_sdr 
 export start_remote_sdr
 export stop_remote_sdr
@@ -40,8 +39,7 @@ INTERRUPT_REMOTE::Bool = false
 # ----------------------------------------------------
 # --- Structure 
 # ---------------------------------------------------- 
-mutable struct CircularSDR  # On PID 1 (SDR on PID 2)
-    #sdr::AbstractSDR 
+mutable struct RemoteChannelSDR  # On PID 1 (SDR on PID 2)
     channel::RemoteChannel
     buffer::Vector{ComplexF32} 
     circ_buff::AtomicCircularBuffer 
@@ -67,11 +65,11 @@ function configure_sdr(channel,bufferSize=1024)
     # --- Configure the circular buffer 
     buffer  = zeros(ComplexF32,bufferSize)
     circ_buff = AtomicCircularBuffer{ComplexF32}(bufferSize,4)
-    return CircularSDR(channel,buffer,circ_buff,0,0,0)
+    return RemoteChannelSDR(channel,buffer,circ_buff,0,0,0)
 end
 
 
-function close(csdr::CircularSDR) 
+function close(csdr::RemoteChannelSDR) 
     AtomicCircularBuffers.atomic_stop(csdr.circ_buff)
     #close(csdr.sdr)
 end
@@ -111,7 +109,7 @@ end
 # ---------------------------------------------------- 
 """ Apply the SDR procedure to fill the circular buffer in a given thread.
 """
-function circ_producer(csdr::CircularSDR)
+function circ_producer(csdr::RemoteChannelSDR)
     cnt = 0 
     global INTERRUPT = false
     try 
@@ -134,9 +132,6 @@ function circ_producer(csdr::CircularSDR)
     @info "Stopping radio producer thread. Gathered $cnt buffers."
     return cnt
 end
-
-
-
 
 
 # ----------------------------------------------------

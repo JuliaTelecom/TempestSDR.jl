@@ -48,7 +48,7 @@ function start_runtime(duration)
     # ----------------------------------------------------
     # --- Instantiate radio 
     # ---------------------------------------------------- 
-    runtime = init_tempestSDR_runtime(channel,nbS,:makie)
+    runtime = init_tempestSDR_runtime(channel,nbS,:terminal)
     # ----------------------------------------------------
     # --- Start radio thread 
     # ---------------------------------------------------- 

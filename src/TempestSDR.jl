@@ -54,8 +54,8 @@ include("FrameSynchronisation.jl")
 # ----------------------------------------------------
 # --- Circular buffer with radio 
 # ---------------------------------------------------- 
-include("CircularBuffer.jl")
-@reexport using .CircularBuffer
+include("RemoteChannelSDRs.jl")
+@reexport using .RemoteChannelSDRs
 # ----------------------------------------------------
 # --- Runtime 
 # ---------------------------------------------------- 
