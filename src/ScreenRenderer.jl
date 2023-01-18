@@ -4,76 +4,135 @@ module ScreenRenderer
 # ----------------------------------------------------
 # --- Dependencies 
 # ---------------------------------------------------- 
-# For external renderer 
+import Base:close  #FIXME necessary here ?
+using ImageInTerminal
 using Images, ImageView
 using Gtk
-# For terminal renderer 
-using ImageInTerminal
-#using Sixel
+using Makie,GLMakie
+
+# ----------------------------------------------------
+# --- Structures 
+# ---------------------------------------------------- 
+# Define abstract container 
+abstract type AbstractScreenRenderer end
+
+
 # ----------------------------------------------------
 # --- Exportation 
 # ---------------------------------------------------- 
+export AbstractScreenRenderer 
 export initScreenRenderer 
-export displayScreen!
-export close_all
-export terminal 
-export terminal_with_sync
+export displayScreen! 
+export displayScreen_vsync! 
+export close 
 
 # ----------------------------------------------------
-# --- Methods
+# --- Utils 
 # ---------------------------------------------------- 
-""" Create the GUI and export the canvas that will be updated 
+""" Convert the input image with levels between 0 and 1 
 """
-function initScreenRenderer(nbLines,nbColumn)
-    mat = zeros(nbLines,nbColumn)
-    fullScale!(mat)
-    guidict = ImageView.imshow(mat)
-    return guidict 
-end
-
-function displayScreen!(p,img)
-    canvas = p["gui"]["canvas"] 
-    img2 = fullScale!(img)
-    imshow(canvas,img2)
-    sleep(0.1) 
-    yield()
-    #Gtk.set_gtk_property!(p, :margin_top, 0)
-    #@async Gtk.gtk_main()
-    #reveal(p, true)
-    #Gtk.showall(p["gui"]["window"])
-    #Libc.systemsleep(0.001)
-    #reveal(p["gui"]["window"],true)
-end
-
-
 function fullScale!(mat)
     mmax = maximum(mat)
     mmin = minimum(mat)
     return (mat .- mmin) / (mmax  - mmin)
 end
 
+# ----------------------------------------------------
+# --- Terminal Renderer
+# ---------------------------------------------------- 
+# Structure 
+struct TerminalRendererScreen <: AbstractScreenRenderer
+end 
+# Display 
+""" Display the extracted image in the terminal 
+"""
+function displayScreen!(p::TerminalRendererScreen,img)
+    println("\33[H")
+    image = fullScale!(img)
+    display(colorview(Gray,image))
+    return nothing
+end
+# Close
+function close(p::TerminalRendererScreen)
+end
 
-import Base.close
-function close_all()
+# ----------------------------------------------------
+# --- Gtk renderer 
+# ---------------------------------------------------- 
+# Structure 
+struct GtkRendererScreen <: AbstractScreenRenderer 
+    p::AbstractDict
+    function GtkRendererScreen(height,width)
+        mat = zeros(height,width)
+        fullScale!(mat)
+        guidict = ImageView.imshow(mat)
+        new(guidict)
+    end
+end 
+# Renderer 
+function displayScreen!(p::GtkRendererScreen,img)
+    canvas = p.p["gui"]["canvas"] 
+    img2 = fullScale!(img)
+    imshow(canvas,img2)
+    sleep(0.1) 
+    yield()
+    return nothing
+end 
+# Close 
+function close(p::GtkRendererScreen)
     ImageView.closeall()
 end
 
 
-""" Display the extracted image in the terminal 
+
+# ----------------------------------------------------
+# --- Makie rendering 
+# ---------------------------------------------------- 
+# Structure 
+mutable struct MakieRendererScreen <: AbstractScreenRenderer
+    figure::Any 
+    ax::Any
+    plot::Any
+    function MakieRendererScreen(height,width)
+        figure = (; resolution=(800,600))
+        m = randn(Float32,height,width)
+        figure, ax, plot_obj = heatmap(m, colorrange=(0, 1),colormap="Greys",figure=figure)
+        display(figure)
+        new(figure,ax,plot_obj)
+    end
+end
+function displayScreen!(b::MakieRendererScreen,img)
+    img2 = abs.(1 .-fullScale!(img))
+    b.plot[1] = img2
+    return nothing
+end
+function close(b::MakieRendererScreen)
+    GLMakie.destroy!(GLMakie.global_gl_screen())
+end
+
+# ----------------------------------------------------
+# --- Common methods and dispatch 
+# ---------------------------------------------------- 
+""" Create the GUI and export the canvas that will be updated 
 """
-function terminal(image)
-    println("\33[H")
-    image = fullScale!(image)
-    display(colorview(Gray,image))
+function initScreenRenderer(renderer::Symbol,nbLines,nbColumn)::AbstractScreenRenderer
+    if renderer == :terminal
+        return TerminalRendererScreen()
+    elseif renderer == :gtk 
+        return GtkRendererScreen(nbLines,nbColumn)
+    elseif renderer == :makie 
+        return MakieRendererScreen(nbLines,nbColumn)
+    else 
+        @error "Unable to init screen renderer: $renderer is an unknown backend"
+    end
 end
 
 """ Display the extracted image in the terminal. It also print in white the vertical lines and horizontal lines obtained with vsync.
 """
-function terminal_with_sync(image,y_sync,x_sync)
-    println("\33[H")
+function displayScreen_vsync!(p::AbstractScreenRenderer,image,y_sync,x_sync)
     image = fullScale!(image)
     image[(y_sync) .+ (-10:10),:] .= 1
     image[:,(x_sync) .+ (-10:10)] .= 1
-    display(colorview(Gray,image))
+    displayScreen!(p,image)
 end
 end

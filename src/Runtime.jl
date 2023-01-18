@@ -5,8 +5,7 @@ mutable struct TempestSDRRuntime
     csdr::CircularSDR 
     config::VideoMode
     renderer::Symbol
-    #screen::Union{String,Nothing,Dict}
-    screen::Any
+    screen::AbstractScreenRenderer
     atomicImage::AtomicCircularBuffer
 end
 
@@ -18,14 +17,10 @@ function init_tempestSDR_runtime(channel,bufferSize,renderer=:gtk)
     # This is a default value here, we maybe can do better
     config = VideoMode(1024,768,60) 
     # --- Init the screen renderer 
-    if renderer == :gtk
-        screen = nothing
-    elseif renderer == :makie 
-        screen = nothing 
-    else 
-        screen = "Terminal"
-    end
+    screen = initScreenRenderer(renderer,config.height,config.width)
+    # --- Init the circular buffer 
     atomicImage = AtomicCircularBuffer{Float32}(config.height * config.width,4)
+    # --- Create runtime structure 
     return TempestSDRRuntime(csdr,config,renderer,screen,atomicImage)
 end
 
@@ -194,15 +189,7 @@ function image_rendering(runtime::TempestSDRRuntime)
         circ_take!(_tmp,runtime.atomicImage)
         imageOut .= reshape(_tmp,y_t,x_t)
         cnt += 1
-        if runtime.renderer == :gtk 
-            # Using External Gtk display
-            displayScreen!(runtime.screen,imageOut)
-        elseif runtime.renderer == :makie 
-            displayMakieScreen!(runtime.screen,imageOut)
-        else 
-            # Plot using Terminal 
-            terminal(imageOut)
-        end
+        displayScreen!(runtime.screen,imageOut)
     end
     tFinal = time() - tInit 
     @info "Render $cnt Images in $tFinal seconds"

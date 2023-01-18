@@ -41,7 +41,7 @@ function start_runtime(duration)
     # ---------------------------------------------------- 
     global channel = RemoteChannel(()->Channel{Vector{ComplexF32}}(1), PID_SDR)
     #future_prod = @spawnat PID_SDR start_remote_sdr(channel,nbS,:pluto,carrierFreq,buffer=sigRx,bufferSize=nbS,samplingRate,gain;depth=4,addr="usb:0.4.5",packetSize=nbS)
-    future_prod = @spawnat PID_SDR start_remote_sdr(channel,nbS,:pluto,carrierFreq,samplingRate,gain;depth=4,addr="usb:0.4.5",packetSize=nbS)
+    future_prod = @spawnat PID_SDR start_remote_sdr(channel,nbS,:pluto,carrierFreq,samplingRate,gain;depth=4,addr="usb:0.10.5",packetSize=nbS)
 
     #@show fetch(future_prod)
 

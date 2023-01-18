@@ -37,8 +37,6 @@ include("Resampler.jl")
 # ---------------------------------------------------- 
 include("ScreenRenderer.jl")
 @reexport using .ScreenRenderer
-include("MakieRenderer.jl")
-@reexport using .MakieRenderer
 # ----------------------------------------------------
 # --- Video configurations 
 # ---------------------------------------------------- 
