@@ -84,12 +84,7 @@ function extract_configuration(runtime::TempestSDRRuntime)
     # ---------------------------------------------------- 
     runtime.config = finalConfig 
     runtime.atomicImage = AtomicCircularBuffer{Float32}(finalConfig.height * finalConfig.width,4)
-    if runtime.renderer == :gtk 
-        runtime.screen = initScreenRenderer(finalConfig.height,finalConfig.width)
-        #body!(wnd, vbox(zeros(finalConfig.height,finalConfig.width))
-    elseif runtime.renderer == :makie 
-        runtime.screen = MakieRendererScreen(finalConfig.height,finalConfig.width)
-    end
+    #runtime.screen = initScreenRenderer(screenRenderer,finalConfig.height,finalConfig.width)
     sleep(0.1)
 end
 
