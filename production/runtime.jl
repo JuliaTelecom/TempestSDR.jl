@@ -31,8 +31,9 @@ function start_runtime(duration)
     carrierFreq  = 764e6
     samplingRate = 20e6
     gain         = 20 
-    acquisition   = 0.05
-    nbS = Int( 80 * 99900)
+    acquisition   = 1.00
+    #nbS = Int( 80 * 99900)
+    nbS = Int(round(acquisition * samplingRate))
 
     # ----------------------------------------------------
     # --- Remote SDR call 
