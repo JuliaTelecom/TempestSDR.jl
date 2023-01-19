@@ -1,6 +1,3 @@
-INTERRUPT::Bool = false 
-
-
 mutable struct TempestSDRRuntime
     csdr::LocalProcessSDR
     config::VideoMode
