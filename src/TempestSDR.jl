@@ -6,7 +6,7 @@ module TempestSDR
 using Reexport 
 using FFTW 
 using Images
-using AbstractSDRs
+#using AbstractSDRs
 using Distributed 
 
 
@@ -65,6 +65,6 @@ export init_tempestSDR_runtime
 export extract_configuration
 export coreProcessing
 export image_rendering
-export stop_processing
+export stop_runtime
 
 end

@@ -7,22 +7,20 @@ include("../setMP.jl")
 # ----------------------------------------------------
 # --- Core processing arguments 
 # ---------------------------------------------------- 
-@everywhere begin 
-    try 
-        if IS_LOADED == false 
-            rethrow(InterruptException())
-        end
-    catch exception 
-        @info "Loading data"
-        #local completePath = "$(pwd())/$DATA_PATH/testX310.dat"
-        local completePath = "/Users/Robin/data_tempest/testX310.dat"
-        global sigRx = readComplexBinary(completePath,:single)
-        #global sigId = sigRx
-        global DUMP = sigRx
-        global IS_LOADED = true 
+try 
+    if IS_LOADED == false 
+        rethrow(InterruptException())
     end
+catch exception 
+    @info "Loading data"
+    #local completePath = "$(pwd())/$DATA_PATH/testX310.dat"
+    local completePath = "/Users/Robin/data_tempest/testX310.dat"
+    global sigRx = readComplexBinary(completePath,:single)
+    #global sigId = sigRx
+    global DUMP = sigRx
+    global IS_LOADED = true 
 end
-PID_SDR = TempestSDR.PID_SDR
+#PID_SDR = TempestSDR.PID_SDR
 
 
 
@@ -39,21 +37,15 @@ function start_runtime(duration)
     # ----------------------------------------------------
     # --- Remote SDR call 
     # ---------------------------------------------------- 
-    global channel = RemoteChannel(()->Channel{Vector{ComplexF32}}(1), PID_SDR)
-    #future_prod = @spawnat PID_SDR start_remote_sdr(channel,nbS,:pluto,carrierFreq,buffer=sigRx,bufferSize=nbS,samplingRate,gain;depth=4,addr="usb:0.4.5",packetSize=nbS)
-    future_prod = @spawnat PID_SDR start_remote_sdr(channel,nbS,:pluto,carrierFreq,samplingRate,gain;depth=4,addr="usb:0.10.5",packetSize=nbS)
-
-    #@show fetch(future_prod)
 
     # ----------------------------------------------------
     # --- Instantiate radio 
     # ---------------------------------------------------- 
-    runtime = init_tempestSDR_runtime(channel,nbS,:terminal)
+    runtime = init_tempestSDR_runtime(:pluto,carrierFreq,samplingRate,gain;addr="usb:1.4.5",bufferSize=nbS,renderer=:makie)
     # ----------------------------------------------------
-    # --- Start radio thread 
+    # --- Start radio threads 
     # ---------------------------------------------------- 
-    task_producer = @async circ_producer(runtime.csdr) 
-
+    task_producer = start_remote_sdr(runtime.csdr)
     # ----------------------------------------------------
     # --- First extract autocorrelation properties 
     # ---------------------------------------------------- 
@@ -69,15 +61,15 @@ function start_runtime(duration)
     # --- Stopping threads
     # ---------------------------------------------------- 
     sleep(duration) 
-    run(`clear`)
-    @info "Stopping all threads"
-    # Stopping SDR call 
-    # Stopping other calls
-    remote_do(stop_remote_sdr,PID_SDR)
-    sleep(1.0)
-    stop_processing()
-    # Ensure producer stops 
-    @async Base.throwto(tup.task_producer,InterruptException())
 
-    return (;runtime,task_producer,task_consummer,task_rendering,future_prod)
+    @info "Stopping all threads"
+    # SDR safe stop 
+    stop_remote_sdr() 
+    sleep(1)
+    # Task stop (rather hard here :D)
+    @async Base.throwto(task_consummer,InterruptException())
+    @async Base.throwto(task_rendering,InterruptException())
+
+    #stop_runtime(runtime)
+    return (;runtime,task_producer,task_consummer,task_rendering)
 end

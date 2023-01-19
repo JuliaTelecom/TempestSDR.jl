@@ -2,7 +2,7 @@ INTERRUPT::Bool = false
 
 
 mutable struct TempestSDRRuntime
-    csdr::RemoteChannelSDR
+    csdr::LocalProcessSDR
     config::VideoMode
     renderer::Symbol
     screen::AbstractScreenRenderer
@@ -10,9 +10,9 @@ mutable struct TempestSDRRuntime
 end
 
 
-function init_tempestSDR_runtime(channel,bufferSize,renderer=:gtk)
-    # --- Configure the SDR 
-    csdr = configure_sdr(channel,bufferSize)
+function init_tempestSDR_runtime(args...;bufferSize=1024,renderer=:gtk,kw...)
+    # --- Configure the SDR remotely
+    csdr = open_remote_sdr(args...;kw...,bufferSize)
     # --- Configure the Video 
     # This is a default value here, we maybe can do better
     config = VideoMode(1024,768,60) 
@@ -46,7 +46,7 @@ function extract_configuration(runtime::TempestSDRRuntime)
     # Fill this buffer 
     for n ∈ 1 : nbBuffer 
         # Getting buffer from radio 
-        circ_take!(_tmp,runtime.csdr.circ_buff)
+        RemoteChannelSDRs.recv!(_tmp,runtime.csdr)
         println(runtime.csdr.circ_buff.ptr_write.ptr)
         sigCorr[ (n-1)*buffSize .+ (1:buffSize)] .= abs2.(_tmp)
     end
@@ -130,7 +130,7 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
     try 
         while(INTERRUPT == false)
             #for _ = 1 : 2
-            circ_take!(sigId,csdr.circ_buff)
+            recv!(sigId,csdr)
             sigAbs .= abs.(sigId)
             global DUMP = sigAbs
             for n in 1:nbIm - 2 
@@ -157,7 +157,7 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
             yield()
         end
     catch exception 
-        rethrow(exception)
+        #rethrow(exception)
     end
     tFinal = time() - tInit 
     rate = Int(floor(nbIm / tFinal))
@@ -192,7 +192,7 @@ function image_rendering(runtime::TempestSDRRuntime)
 end
 
 
-function stop_processing()
+function stop_runtime()
     global INTERRUPT = true
     #circ_stop(runtime.csdr)
     #close(runtime.csdr.sdr)
