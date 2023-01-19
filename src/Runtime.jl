@@ -94,7 +94,7 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
     # ----------------------------------------------------
     # --- Radio parameters 
     # ---------------------------------------------------- 
-    Fs = @remote_sdr getSamplingRate(_)
+    @show Fs = @remote_sdr getSamplingRate(_)
     x_t = theConfig.width    # Number of column
     y_t = theConfig.height   # Number of lines 
     fv  = theConfig.refresh
@@ -126,8 +126,7 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
             #for _ = 1 : 2
             recv!(sigId,csdr)
             sigAbs .= abs.(sigId)
-            global DUMP = sigAbs
-            for n in 1:nbIm - 2 
+            for n in 1:nbIm - 4 
                 theView = @views sigAbs[n*image_size_down .+ (1:image_size_down)]
                  #Getting an image from the current buffer 
                 image_mat = transpose(reshape(imresize(theView,image_size),x_t,y_t))
@@ -138,7 +137,7 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
                     τ_pixel = (tup[1][2]-1)
                     τ = Int(floor(τ_pixel / (x_t*y_t)  / fv * Fs))
                     # Rescale image to have the sync image
-                    theView = @views sigAbs[τ+n*image_size_down .+ (1:image_size_down)]
+                    theView = @views sigAbs[τ+n*image_size_down .+ (1:2*image_size_down)]
                     image_mat = transpose(reshape(imresize(theView,image_size),x_t,y_t))
                 end
                 # Low pass filter
@@ -154,8 +153,8 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
         #rethrow(exception)
     end
     tFinal = time() - tInit 
-    rate = Int(floor(nbIm / tFinal))
-    @info "Process $cnt Images in $tFinal seconds"
+    rate = round(cnt / tFinal;digits=2)
+    @info "Process $cnt Images in $tFinal seconds [$rate FPS]"
     return imageOut
 end
 

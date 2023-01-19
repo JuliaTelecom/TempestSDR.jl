@@ -4,24 +4,30 @@
 include("../setMP.jl")
 
 
-# ----------------------------------------------------
-# --- Core processing arguments 
-# ---------------------------------------------------- 
-try 
-    if IS_LOADED == false 
-        rethrow(InterruptException())
-    end
-catch exception 
-    @info "Loading data"
-    #local completePath = "$(pwd())/$DATA_PATH/testX310.dat"
-    local completePath = "/Users/Robin/data_tempest/testX310.dat"
-    global sigRx = readComplexBinary(completePath,:single)
-    #global sigId = sigRx
-    global DUMP = sigRx
-    global IS_LOADED = true 
-end
-#PID_SDR = TempestSDR.PID_SDR
 
+@everywhere begin 
+    # ----------------------------------------------------
+    # --- Template signal for radiosim
+    # ---------------------------------------------------- 
+    try 
+        if IS_LOADED == false 
+            rethrow(InterruptException())
+        end
+    catch exception 
+        @info "Loading data"
+        #local completePath = "$(pwd())/$DATA_PATH/testX310.dat"
+        local completePath = "/Users/Robin/data_tempest/testX310.dat"
+        global sigRx = readComplexBinary(completePath,:single)
+        #global sigId = sigRx
+        global DUMP = sigRx
+        global IS_LOADED = true 
+    end
+    # ----------------------------------------------------
+    # --- Mode for runtime 
+    # ---------------------------------------------------- 
+    global RUNTIME_MODE = :radiosim
+    #global RUNTIME_MODE = :pluto
+end
 
 
 function start_runtime(duration)
@@ -42,7 +48,11 @@ function start_runtime(duration)
     # ----------------------------------------------------
     # --- Instantiate radio 
     # ---------------------------------------------------- 
-    runtime = init_tempestSDR_runtime(:pluto,carrierFreq,samplingRate,gain;addr="usb:1.4.5",bufferSize=nbS,renderer=:makie)
+    if RUNTIME_MODE == :radiosim 
+        runtime = init_tempestSDR_runtime(:radiosim,carrierFreq,samplingRate,gain;addr="usb:1.4.5",bufferSize=nbS,buffer=sigRx,packetSize=nbS,renderer=:makie)
+    else 
+        runtime = init_tempestSDR_runtime(RUNTIME_MODE,carrierFreq,samplingRate,gain;addr="usb:1.4.5",bufferSize=nbS,renderer=:makie)
+    end
     # ----------------------------------------------------
     # --- Start radio threads 
     # ---------------------------------------------------- 
