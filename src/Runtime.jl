@@ -93,7 +93,6 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
     # ----------------------------------------------------
     # --- Overall parameters 
     # ---------------------------------------------------- 
-    global INTERRUPT = false 
     csdr = runtime.csdr
     theConfig = runtime.config
     # ----------------------------------------------------
@@ -128,7 +127,7 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
     τ = 0
     do_align = true
     try 
-        while(INTERRUPT == false)
+        while(true)
             #for _ = 1 : 2
             recv!(sigId,csdr)
             sigAbs .= abs.(sigId)
@@ -176,10 +175,9 @@ function image_rendering(runtime::TempestSDRRuntime)
     _tmp = zeros(Float32,x_t*y_t)
     imageOut = zeros(Float32,y_t,x_t)
     # Loop for rendering 
-    global INTERRUPT = false 
     cnt = 0
     tInit = time()
-    while (INTERRUPT == false)
+    while (true)
         # Get a new image 
         circ_take!(_tmp,runtime.atomicImage)
         imageOut .= reshape(_tmp,y_t,x_t)
@@ -191,10 +189,4 @@ function image_rendering(runtime::TempestSDRRuntime)
     return cnt
 end
 
-
-function stop_runtime()
-    global INTERRUPT = true
-    #circ_stop(runtime.csdr)
-    #close(runtime.csdr.sdr)
-end
 

@@ -52,7 +52,7 @@ include("Autocorrelations.jl")
 include("FrameSynchronisation.jl")
 @reexport using .FrameSynchronisation
 # ----------------------------------------------------
-# --- Circular buffer with radio 
+# --- Radio in specific core
 # ---------------------------------------------------- 
 include("RemoteChannelSDRs.jl")
 @reexport using .RemoteChannelSDRs
@@ -65,6 +65,5 @@ export init_tempestSDR_runtime
 export extract_configuration
 export coreProcessing
 export image_rendering
-export stop_runtime
 
 end
