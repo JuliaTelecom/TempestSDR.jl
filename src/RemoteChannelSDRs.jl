@@ -79,7 +79,7 @@ samplingRate = @remote_sdr getSamplingRate(_)
 """
 macro remote_sdr(ex) 
     # SDR location at core 2 
-    sdrLoc = "TempestSDR.RemoteChannelSDRs.distantSDR" 
+    sdrLoc = "TempestSDR.RemoteChannelSDRs.distantSDR.sdr" 
     #sdrLoc = "distantSDR" 
     str = string(ex)
     rr = "using TempestSDR, AbstractSDRs;"*replace(str, "_" => sdrLoc)

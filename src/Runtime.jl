@@ -32,8 +32,7 @@ function extract_configuration(runtime::TempestSDRRuntime)
     # --- Get long signal to compute metrics 
     # ---------------------------------------------------- 
     # --- Core parameters for the SDR 
-    # FIXME To be updated 
-    Fs = 20e6
+    Fs = @remote_sdr getSamplingRate(_)
     # --- Number of buffers used for configuration calculation 
     nbBuffer = 4
     # Instantiate a long buffer to get all the data from the SDR 
@@ -95,8 +94,7 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
     # ----------------------------------------------------
     # --- Radio parameters 
     # ---------------------------------------------------- 
-    # FIXME To be updated 
-    Fs = 20e6
+    Fs = @remote_sdr getSamplingRate(_)
     x_t = theConfig.width    # Number of column
     y_t = theConfig.height   # Number of lines 
     fv  = theConfig.refresh
