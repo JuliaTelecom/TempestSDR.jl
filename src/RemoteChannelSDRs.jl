@@ -37,8 +37,8 @@ include("AtomicCircularBuffers.jl")
 INTERRUPT::Bool = false
 INTERRUPT_REMOTE::Bool = false
 import ..TempestSDR: PID_SDR
+const channel = RemoteChannel(()->Channel{Vector{ComplexF32}}(1))
 
-global channel = RemoteChannel(()->Channel{Vector{ComplexF32}}(1))
 # ----------------------------------------------------
 # --- Structure 
 # ---------------------------------------------------- 
