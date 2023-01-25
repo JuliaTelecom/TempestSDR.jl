@@ -5,7 +5,6 @@ module TempestSDR
 # ---------------------------------------------------- 
 using Reexport 
 using FFTW 
-using Images
 #using AbstractSDRs
 using Distributed 
 

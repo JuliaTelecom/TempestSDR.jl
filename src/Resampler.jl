@@ -8,12 +8,14 @@ module Resampler
 using FFTW 
 using LinearAlgebra
 using DSP 
+using Images
 
 # ----------------------------------------------------
 # --- Exports
 # ---------------------------------------------------- 
 export init_resampler
 export naiveResampler
+export sig_to_image
 # ----------------------------------------------------
 # --- Methods
 # ---------------------------------------------------- 
@@ -104,6 +106,18 @@ function naiveResampler(sigOut,sigId,upCoeff)
             sigOut[(n-1)*upCoeff + k] = sigId[n]
         end
     end
+end
+
+
+
+""" Transform a signal to an image of size x_t*y_t
+Note that this is for rendering and that this matrix should be transposed in order to have the pixel at the right position 
+"""
+function sig_to_image(sig,y_t,x_t)
+    image_size = y_t * x_t
+    image_mat  = transpose(reshape(imresize(sig,image_size),x_t,y_t))
+    #image_mat  = transpose(reshape(imresize(sig,image_size),y_t,x_t))
+    return image_mat
 end
 
 

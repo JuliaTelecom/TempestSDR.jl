@@ -170,6 +170,26 @@ function toImage(sigId,offset,Fs,finalConfig)
     return anImage 
 end
 
+
+function toImageGood(sigId,offset,Fs,finalConfig)
+    # Duration of Image based on current configuration 
+    d = Int(round(Fs/finalConfig.refresh))
+    # View on the signal 
+    s = sigId[(offset).+(1:d)]
+    # Size of the image 
+    outSize = finalConfig.width * finalConfig.height 
+    flatImage = imresize(s,outSize)
+    # Convert into Image using lines and columns 
+    # We use loop to be sure of what we have 
+    anImage = zeros(finalConfig.height,finalConfig.width)
+    cnt = 0 
+    for n = 1 : 1 : finalConfig.height 
+        anImage[n,:] = flatImage[ cnt .+ (1:finalConfig.width)] 
+        cnt += finalConfig.width
+    end 
+    return anImage 
+end
+
 anImage = toImage(sigId,4_200_000,Fs,finalConfig)
 
 # ----------------------------------------------------
@@ -183,5 +203,8 @@ tup = vSync(anImage)
 τ = tup[2][2] * finalConfig.width + tup[1][2]
 idx = Int(floor(τ / (finalConfig.width * finalConfig.height)  / fv * Fs))
 
+image_baseband_size = Int(round(Fs/finalConfig.refresh))
 anImage = toImage(sigId,4_200_000 +idx, Fs,finalConfig)
+anImage3 = toImage(sigId,4_200_000 +idx, Fs,finalConfig)
+anImage2 = sig_to_image(sigId[4_200_000+idx.+(1:image_baseband_size)],finalConfig.height,finalConfig.width)
 #terminal(anImage)

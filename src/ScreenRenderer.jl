@@ -22,6 +22,7 @@ abstract type AbstractScreenRenderer end
 # ---------------------------------------------------- 
 export AbstractScreenRenderer 
 export initScreenRenderer 
+export displayScreen
 export displayScreen! 
 export displayScreen_vsync! 
 export close 
@@ -94,16 +95,18 @@ mutable struct MakieRendererScreen <: AbstractScreenRenderer
     ax::Any
     plot::Any
     function MakieRendererScreen(height,width)
-        figure = (; resolution=(800,600))
-        m = randn(Float32,height,width)
-        figure, ax, plot_obj = heatmap(m, colorrange=(0, 1),colormap="Greys",figure=figure)
+        figure = (; resolution=(1600,1200))
+        # With heatmap, we need to have transposed matrixes
+        m = randn(Float32,width,height)
+        figure, ax, plot_obj = heatmap(m, colorrange=(0, 1),colormap="Greys",figure=figure,fxaa=false)
+        ax.yreversed=true
         display(figure)
         new(figure,ax,plot_obj)
     end
 end
 function displayScreen!(b::MakieRendererScreen,img)
     img2 = abs.(1 .-fullScale!(img))
-    b.plot[1] = img2
+    b.plot[1] = img2'
     return nothing
 end
 function close(b::MakieRendererScreen)
@@ -135,4 +138,15 @@ function displayScreen_vsync!(p::AbstractScreenRenderer,image,y_sync,x_sync)
     image[:,(x_sync) .+ (-10:10)] .= 1
     displayScreen!(p,image)
 end
+
+
+
+function displayScreen(renderer::Symbol,image) 
+    nbLines,nbColumn = size(image) 
+    screen = initScreenRenderer(renderer,nbLines,nbColumn)
+    displayScreen!(screen,image) 
+    return screen 
+end
+
+
 end
