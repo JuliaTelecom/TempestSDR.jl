@@ -7,7 +7,7 @@ using Distributed
 # ---------------------------------------------------- 
 const N_PROCS_REQUIRED = 2 
 if nprocs() < N_PROCS_REQUIRED 
-    addprocs( N_PROCS_REQUIRED - nprocs)
+    addprocs( N_PROCS_REQUIRED - nprocs())
 end
 
 
