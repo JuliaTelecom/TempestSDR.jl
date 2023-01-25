@@ -132,7 +132,6 @@ function wait_consData(circ_buff)
         stop =  atomic_read(circ_buff.t_stop) 
         new_data = (flag > 0) || stop == 1
         yield() 
-        #sleep(0.0001)
     end
 end
 

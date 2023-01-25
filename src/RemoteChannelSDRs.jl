@@ -165,7 +165,6 @@ function start_distant_sdr() # launched with @spawnat 2 start_distant_sdr()
             # --- Classic SDR call 
             recv!(buffer,distantSDR.sdr)
             # Put in remote 
-            #sleep(0.01) #FIXME for radiosim to avoid throttle 
             put!(channel,buffer) # Depth 1, will not block as circ_producer consummes it
             # 
             #(mod(cnt,10) == 0) && (println("$INTERRUPT_REMOTE"))
