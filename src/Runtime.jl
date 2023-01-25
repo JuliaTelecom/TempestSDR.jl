@@ -119,33 +119,31 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
     ## 
     cnt = 0
     α = 1.0
-    τ = 0
+    τ = 0.0
     do_align = true
     try 
         while(true)
-            #for _ = 1 : 2
             recv!(sigId,csdr)
             sigAbs .= abs.(sigId)
             for n in 1:nbIm - 4 
-                theView = @views sigAbs[n*image_size_down .+ (1:image_size_down)]
+                theView = @views sigAbs[n*image_size_down .+ (1:2*image_size_down)]
                  #Getting an image from the current buffer 
                  image_mat = sig_to_image(theView,y_t,x_t)
                 # Frame synchronisation  
                 if do_align
                     tup = vSync(image_mat)
                     # Calculate Offset in the image 
-                    τ_pixel = (tup[1][2]-1)
+                    τ_pixel = (tup[1][2]-1) # Only a vertical sync 
                     τ = Int(floor(τ_pixel / (x_t*y_t)  / fv * Fs))
                     # Rescale image to have the sync image
                     theView = @views sigAbs[τ+n*image_size_down .+ (1:2*image_size_down)]
                     image_mat = sig_to_image(theView,y_t,x_t)
                 end
                 # Low pass filter
-                imageOut = (1-α) * imageOut .+ α * image_mat
-                global IMA = imageOut
-                #imageOut .= image_mat
+                # imageOut = (1-α) * imageOut .+ α * image_mat
+                imageOut .= image_mat
                  #Putting data  
-                circ_put!(runtime.atomicImage,imageOut[:])
+                 circ_put!(runtime.atomicImage,view(imageOut,:))
                 cnt += 1
             end
             yield()
