@@ -98,15 +98,15 @@ mutable struct MakieRendererScreen <: AbstractScreenRenderer
         figure = (; resolution=(1600,1200))
         # With heatmap, we need to have transposed matrixes
         m = randn(Float32,width,height)
-        figure, ax, plot_obj = heatmap(m, colorrange=(0, 1),colormap="Greys",figure=figure,fxaa=false)
+        figure, ax, plot_obj = heatmap(m,colormap=Reverse("Greys"),figure=figure,fxaa=false)
         ax.yreversed=true
         display(figure)
         new(figure,ax,plot_obj)
     end
 end
 function displayScreen!(b::MakieRendererScreen,img)
-    img2 = abs.(1 .-fullScale!(img))
-    b.plot[1] = img2'
+    #img2 = abs.(1 .-fullScale!(img))
+    b.plot[1] = img'
     return nothing
 end
 function close(b::MakieRendererScreen)
