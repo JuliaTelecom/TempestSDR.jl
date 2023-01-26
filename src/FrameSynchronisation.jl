@@ -50,24 +50,28 @@ end
 
 
 function vsync(image::AbstractMatrix{T},sync::SyncXY{T}) where T
-    # Size of matrix
-    #(y_t,x_t) = size(image)
-    # Init container 
-    # Average on horizonal limit 
-    c_h  = dropdims(sum(image;dims=1);dims=1)::Vector{T}
+    # ----------------------------------------------------
+    # Vertical Sync 
+    # ---------------------------------------------------- 
+    # Projection on y 
+    c_v  = dropdims(sum(image;dims=1);dims=1)::Vector{T}
     # Filtering with the Gaussian kernel 
-    c_h  = filt(sync.h,c_h)
+    c_v  = filt(sync.h,c_v)
     # Find y position 
-    fill_β!(sync.β_x,c_h,sync.x_sync)
-    s_y = findmax(sync.β_y)[2]
-    # Average on vertical limit 
-    c_v  = dropdims(sum(image;dims=2);dims=2)::Vector{T}
+    fill_β!(sync.β_x,c_v,sync.x_sync)
+    s_y = findmax(sync.β_y)[2][2]
+    # ----------------------------------------------------
+    # Horizonal Sync 
+    # ---------------------------------------------------- 
+    # Average on horizontal limit 
+    c_h  = dropdims(sum(image;dims=2);dims=2)::Vector{T}
     # Filtering with the Gaussian kernel 
-    c_v  = filt(sync.h,c_v)       
+    c_h  = filt(sync.h,c_h)       
     # Find x position 
-    fill_β!(sync.β_y,c_v,sync.y_sync)
-    s_x = findmax(sync.β_x)[2]
-    return (s_x,s_y)
+    fill_β!(sync.β_y,c_h,sync.y_sync)
+    s_x = findmax(sync.β_x)[2][2]
+    # Output 
+    return (s_y,s_x)
 end
 
 

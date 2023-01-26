@@ -145,7 +145,7 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
                     image_mat = sig_to_image(theView,y_t,x_t)
                 elseif do_align == 2 
                     tup = vsync(image_mat,sync)
-                    image_mat = circshift(image_mat,(-tup[2][2],-tup[1][2]))
+                    image_mat = circshift(image_mat,(-tup[1],-tup[2]))
                 end
                 # Low pass filter
                  imageOut = (1-α) * imageOut .+ α * image_mat
@@ -157,7 +157,7 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
             yield()
         end
     catch exception 
-        rethrow(exception)
+        #rethrow(exception)
     end
     tFinal = time() - tInit 
     rate = round(cnt / tFinal;digits=2)
