@@ -47,7 +47,7 @@ function extract_configuration(runtime::TempestSDRRuntime)
     # Fill this buffer 
     for n ∈ 1 : nbBuffer 
         # Getting buffer from radio 
-        RemoteChannelSDRs.recv!(_tmp,runtime.csdr)
+        ThreadSDRs.recv!(_tmp,runtime.csdr)
         println(runtime.csdr.circ_buff.ptr_write.ptr)
         sigCorr[ (n-1)*buffSize .+ (1:buffSize)] .= abs2.(_tmp)
     end
@@ -117,7 +117,7 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
     # ---------------------------------------------------- 
     imageOut = zeros(T,y_t,x_t)
     # Frame sync 
-    vSync = init_vsync(image_mat)
+    sync = SyncXY(image_mat)
     # Measure 
     @info "Ready to process images ($x_t x $y_t)"
     tInit = time()
@@ -136,7 +136,7 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
                  image_mat = sig_to_image(theView,y_t,x_t)
                 # Frame synchronisation  
                 if do_align
-                    tup = vSync(image_mat)
+                    tup = vsync(image_mat,sync)
                     # Calculate Offset in the image 
                     τ_pixel = (tup[1][2]-1) # Only a vertical sync 
                     τ = Int(floor(τ_pixel / (x_t*y_t)  / fv * Fs))
@@ -148,7 +148,7 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
                 # imageOut = (1-α) * imageOut .+ α * image_mat
                 imageOut .= image_mat
                  #Putting data  
-                 circ_put!(runtime.atomicImage,view(imageOut,:))
+                 circ_put!(runtime.atomicImage,collect(view(imageOut,:)))
                 cnt += 1
             end
             yield()

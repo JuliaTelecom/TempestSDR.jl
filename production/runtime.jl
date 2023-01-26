@@ -36,7 +36,7 @@ function start_runtime(duration,device=:radiosim)
     carrierFreq  = 764e6
     samplingRate = 20e6
     gain         = 20 
-    acquisition   = 1.00
+    acquisition   = 0.50
     #nbS = Int( 80 * 99900)
     nbS = Int(round(acquisition * samplingRate))
 
@@ -48,9 +48,9 @@ function start_runtime(duration,device=:radiosim)
     # --- Instantiate radio 
     # ---------------------------------------------------- 
     if device == :radiosim 
-        runtime = init_tempestSDR_runtime(:radiosim,carrierFreq,samplingRate,gain;addr="usb:1.4.5",bufferSize=nbS,buffer=sigRx,packetSize=nbS,renderer=:gtk)
+        runtime = init_tempestSDR_runtime(:radiosim,carrierFreq,samplingRate,gain;addr="usb:1.4.5",bufferSize=nbS,buffer=sigRx,packetSize=nbS,renderer=:makie)
     else 
-        runtime = init_tempestSDR_runtime(device,carrierFreq,samplingRate,gain;addr="usb:1.4.5",bufferSize=nbS,renderer=:makie)
+        runtime = init_tempestSDR_runtime(device,carrierFreq,samplingRate,gain;addr="usb:0.10.5",bufferSize=nbS,renderer=:makie)
     end
     # ----------------------------------------------------
     # --- Start radio threads 
@@ -80,10 +80,11 @@ function start_runtime(duration,device=:radiosim)
     # SDR safe stop 
     @async Base.throwto(task_producer,InterruptException())
     sleep(1)
-    # Task stop (rather hard here :D)
+    # Task stop 
     @async Base.throwto(task_consummer,InterruptException())
     @async Base.throwto(task_rendering,InterruptException())
-
+    # Safely close radio 
+    close(runtime.csdr)
     #stop_runtime(runtime)
     return (;runtime,task_producer,task_consummer,task_rendering,screen)
 end

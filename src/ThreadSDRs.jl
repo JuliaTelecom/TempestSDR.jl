@@ -1,5 +1,5 @@
-module RemoteChannelSDRs
-""" Module for managing data from the SDR with a circular buffer way. We will put all the received buffers in a circular buffer. With classic Julia Channels, `put!` will wait `pop`. In this proposed way the `push` will erase the oldest non poped data.
+module ThreadSDRs
+""" Module for managing data from the SDR with a circular buffer way from a distant thread
 """
 
 # ----------------------------------------------------
@@ -88,6 +88,10 @@ end
 
 function recv!(buffer,csdr::MultiThreadSDR)
     circ_take!(buffer,csdr.circ_buff)
+end
+
+function close(csdr::MultiThreadSDR) 
+    close(csdr.sdr)
 end
 
 end

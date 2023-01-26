@@ -195,8 +195,8 @@ anImage = toImage(sigId,4_200_000,Fs,finalConfig)
 # ----------------------------------------------------
 # --- Frame sync
 # ---------------------------------------------------- 
-vSync = init_vsync(anImage)
-tup = vSync(anImage)
+sync = SyncXY(anImage)
+tup = vsync(anImage,sync)
 #terminal_with_sync(anImage,tup[2][2],tup[1][2])
 
 

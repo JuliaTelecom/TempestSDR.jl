@@ -51,8 +51,8 @@ include("FrameSynchronisation.jl")
 # ----------------------------------------------------
 # --- Radio in specific core
 # ---------------------------------------------------- 
-include("RemoteChannelSDRs.jl")
-@reexport using .RemoteChannelSDRs
+include("ThreadSDRs.jl")
+@reexport using .ThreadSDRs
 # ----------------------------------------------------
 # --- Runtime 
 # ---------------------------------------------------- 
