@@ -200,7 +200,7 @@ tup = vsync(anImage,sync)
 #terminal_with_sync(anImage,tup[2][2],tup[1][2])
 
 
-τ = tup[2][2] * finalConfig.width + tup[1][2]
+τ = tup[2] * finalConfig.width + tup[1]
 idx = Int(floor(τ / (finalConfig.width * finalConfig.height)  / fv * Fs))
 
 image_baseband_size = Int(round(Fs/finalConfig.refresh))
