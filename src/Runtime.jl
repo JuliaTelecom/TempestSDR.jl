@@ -131,7 +131,7 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
             recv!(sigId,csdr)
             sigAbs .= abs.(sigId)
             for n in 1:nbIm - 4 
-                theView = @views sigAbs[n*image_size_down .+ (1:2*image_size_down)]
+                theView = @views sigAbs[n*image_size_down .+ (1:image_size_down)]
                  #Getting an image from the current buffer 
                  image_mat = sig_to_image(theView,y_t,x_t)
                 # Frame synchronisation  
@@ -141,7 +141,7 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
                     τ_pixel = (tup[1][2]-1) # Only a vertical sync 
                     τ = Int(floor(τ_pixel / (x_t*y_t)  / fv * Fs))
                     # Rescale image to have the sync image
-                    theView = @views sigAbs[τ+n*image_size_down .+ (1:2*image_size_down)]
+                    theView = @views sigAbs[τ+n*image_size_down .+ (1:image_size_down)]
                     image_mat = sig_to_image(theView,y_t,x_t)
                 end
                 # Low pass filter
@@ -175,14 +175,17 @@ function image_rendering(runtime::TempestSDRRuntime,screen)
     # Loop for rendering 
     cnt = 0
     tInit = time()
-    while (true)
-        # Get a new image 
-        circ_take!(_tmp,runtime.atomicImage)
-        imageOut .= reshape(_tmp,y_t,x_t)
-        cnt += 1
-        displayScreen!(screen,imageOut)
-        sleep(0.01)
-        yield()
+    try 
+        while (true)
+            # Get a new image 
+            circ_take!(_tmp,runtime.atomicImage)
+            imageOut .= reshape(_tmp,y_t,x_t)
+            cnt += 1
+            displayScreen!(screen,imageOut)
+            sleep(0.01)
+            yield()
+        end
+    catch exception 
     end
     tFinal = time() - tInit 
     @info "Render $cnt Images in $tFinal seconds"
