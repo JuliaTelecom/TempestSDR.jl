@@ -22,15 +22,10 @@ include("../setMP.jl")
         global DUMP = sigRx
         global IS_LOADED = true 
     end
-    # ----------------------------------------------------
-    # --- Mode for runtime 
-    # ---------------------------------------------------- 
-    global RUNTIME_MODE = :radiosim
-    #global RUNTIME_MODE = :pluto
 end
 
 
-function start_runtime(duration)
+function start_runtime(duration;runtime_mode=:radiosim)
     # ----------------------------------------------------
     # --- SDR parameters 
     # ---------------------------------------------------- 
@@ -48,10 +43,10 @@ function start_runtime(duration)
     # ----------------------------------------------------
     # --- Instantiate radio 
     # ---------------------------------------------------- 
-    if RUNTIME_MODE == :radiosim 
+    if runtime_mode == :radiosim 
         runtime = init_tempestSDR_runtime(:radiosim,carrierFreq,samplingRate,gain;addr="usb:1.4.5",bufferSize=nbS,buffer=sigRx,packetSize=nbS,renderer=:makie)
     else 
-        runtime = init_tempestSDR_runtime(RUNTIME_MODE,carrierFreq,samplingRate,gain;addr="usb:1.4.5",bufferSize=nbS,renderer=:makie)
+        runtime = init_tempestSDR_runtime(runtime_mode,carrierFreq,samplingRate,gain;addr="usb:0.10.5",bufferSize=nbS,renderer=:makie)
     end
     # ----------------------------------------------------
     # --- Start radio threads 
