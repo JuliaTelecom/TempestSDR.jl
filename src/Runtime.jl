@@ -125,7 +125,7 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
     cnt = 0
     α = T(0.9)
     τ = 0.0
-    do_align = 2
+    do_align = true
     try 
         while(true)
             recv!(sigId,csdr)
@@ -135,15 +135,7 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
                  #Getting an image from the current buffer 
                  image_mat = sig_to_image(theView,y_t,x_t)
                 # Frame synchronisation  
-                if do_align == 1 
-                    tup = vsync(image_mat,sync)
-                    # Calculate Offset in the image 
-                    τ_pixel = (tup[2][2]-1) # Only a vertical sync 
-                    τ = Int(floor(τ_pixel / (x_t*y_t)  / fv * Fs))
-                    # Rescale image to have the sync image
-                    theView = @views sigAbs[τ+n*image_size_down .+ (1:image_size_down)]
-                    image_mat = sig_to_image(theView,y_t,x_t)
-                elseif do_align == 2 
+                if do_align == true 
                     tup = vsync(image_mat,sync)
                     image_mat = circshift(image_mat,(-tup[1],-tup[2]))
                 end
