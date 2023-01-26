@@ -135,11 +135,17 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
                  #Getting an image from the current buffer 
                  image_mat = sig_to_image(theView,y_t,x_t)
                 # Frame synchronisation  
-                if do_align ==true 
-                    # Calculate coordinate for sync 
-                    (y_sync,x_sync) = vsync(image_mat,sync)
-                    # Shift the image based on shifts 
-                    image_mat = circshift(image_mat,(-y_sync,-x_sync))
+                if do_align == 1 
+                    tup = vsync(image_mat,sync)
+                    # Calculate Offset in the image 
+                    τ_pixel = (tup[2][2]-1) # Only a vertical sync 
+                    τ = Int(floor(τ_pixel / (x_t*y_t)  / fv * Fs))
+                    # Rescale image to have the sync image
+                    theView = @views sigAbs[τ+n*image_size_down .+ (1:image_size_down)]
+                    image_mat = sig_to_image(theView,y_t,x_t)
+                elseif do_align == 2 
+                    tup = vsync(image_mat,sync)
+                    image_mat = circshift(image_mat,(-tup[2][2],-tup[1][2]))
                 end
                 # Low pass filter
                  imageOut = (1-α) * imageOut .+ α * image_mat

@@ -59,15 +59,15 @@ function vsync(image::AbstractMatrix{T},sync::SyncXY{T}) where T
     c_h  = filt(sync.h,c_h)
     # Find y position 
     fill_β!(sync.β_x,c_h,sync.x_sync)
-    s_x = findmax(sync.β_x)[2][2]
+    s_y = findmax(sync.β_y)[2]
     # Average on vertical limit 
     c_v  = dropdims(sum(image;dims=2);dims=2)::Vector{T}
     # Filtering with the Gaussian kernel 
     c_v  = filt(sync.h,c_v)       
     # Find x position 
     fill_β!(sync.β_y,c_v,sync.y_sync)
-    s_y = findmax(sync.β_y)[2][2]
-    return (s_y,s_x)
+    s_x = findmax(sync.β_x)[2]
+    return (s_x,s_y)
 end
 
 
