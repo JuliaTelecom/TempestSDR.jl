@@ -9,7 +9,8 @@ using LoopVectorization
 # ----------------------------------------------------
 # --- Exportations
 # ---------------------------------------------------- 
-export init_vsync
+export SyncXY
+export vsync
 
 
 # ----------------------------------------------------
@@ -22,49 +23,55 @@ struct Sync
     n::Int      # Size of the line or column
 end 
 
-
-
-function init_vsync(image::AbstractArray{T}) where T
-    # Size of the image 
-    (y_t,x_t) = size(image)
-    # Init container 
-    c_v = zeros(T, x_t)
-    c_h = zeros(T, y_t)
-    # Initiate Gaussian filter 
-    h   = init_gaussian_filter(5)
-    # Bounds for β search 
-    @show wmin_y = Int(ceil(1/100*y_t))
-    @show wmax_y   = Int(floor(y_t/4))
-    β_y    = zeros(T,1+wmax_y - wmin_y,y_t)
-    # Bounds for β search 
-    @show wmin_x = Int(ceil(5/100*x_t))
-    @show wmax_x   = Int(floor(x_t/4))
-    β_x    = zeros(T,1+wmax_x - wmin_x,x_t)
-
-
-    sync_y = Sync(wmin_y,wmax_y,y_t)
-    sync_x = Sync(wmin_x,wmax_x,x_t)
-
-    function vsync(image)
-        # Average on vertical limit 
-        c_v  = sum(image;dims=1)
-        # Filtering with the Gaussian kernel 
-        c_v  = filt(h,c_v)
-        # Find y position 
-        fill_β!(β_y,c_v,sync_y)
-        s_y = findmax(β_y)[2]
-         # Average on vertical limit 
-        c_h  = sum(image;dims=1)
-        # Filtering with the Gaussian kernel 
-        c_h  = filt(h,c_h)       
-        # Find x position 
-        fill_β!(β_x,c_h,sync_x)
-        s_x = findmax(β_x)[2]
-        return (s_x,s_y)
+struct SyncXY{T} 
+    h::Vector{T} 
+    x_sync::Sync 
+    y_sync::Sync
+    β_x::Matrix{T} 
+    β_y::Matrix{T} 
+    function SyncXY(image::Matrix{T}) where T 
+        (y_t,x_t) = size(image)
+        # Initiate Gaussian filter 
+        h   = init_gaussian_filter(5)
+        # Bounds for β search 
+        @show wmin_y = Int(ceil(1/100*y_t))
+        @show wmax_y   = Int(floor(y_t/4))
+        β_y    = zeros(T,1+wmax_y - wmin_y,y_t)
+        # Bounds for β search 
+        @show wmin_x = Int(ceil(5/100*x_t))
+        @show wmax_x   = Int(floor(x_t/4))
+        β_x    = zeros(T,1+wmax_x - wmin_x,x_t)
+        #
+        sync_y = Sync(wmin_y,wmax_y,y_t)
+        sync_x = Sync(wmin_x,wmax_x,x_t)
+        return new{T}(h,sync_x,sync_y,β_x,β_y)
     end
-    
-    return vsync
 end
+
+
+function vsync(image::AbstractMatrix{T},sync::SyncXY{T}) where T
+    # Size of matrix
+    #(y_t,x_t) = size(image)
+    # Init container 
+    c_v = zeros(T, sync.x_sync.n)
+    c_h = zeros(T, sync.y_sync.n)
+    # Average on vertical limit 
+    c_v  = dropdims(sum(image;dims=1);dims=1)::Vector{T}
+    # Filtering with the Gaussian kernel 
+    c_v  = filt(sync.h,c_v)
+    # Find y position 
+    fill_β!(sync.β_y,c_v,sync.y_sync)
+    s_y = findmax(sync.β_y)[2]
+    # Average on vertical limit 
+    c_h  = dropdims(sum(image;dims=1);dims=1)::Vector{T}
+    # Filtering with the Gaussian kernel 
+    c_h  = filt(sync.h,c_h)       
+    # Find x position 
+    fill_β!(sync.β_x,c_h,sync.x_sync)
+    s_x = findmax(sync.β_x)[2]
+    return (s_x,s_y)
+end
+
 
 """ Calculate the average pixel in the blank area of width `w` for an flatten image `c_v` of size `n` and assuming that the blank area is centered at `c`
 """
@@ -87,7 +94,7 @@ function fill_β!(β,c_v,sync::Sync)
         # This is the minimal blank region. All other regions (for larger values of w) will contains _Σ
         _Σ = 2*averagePixel(c_v,c,sync.w_min-1,sync.n) 
         # Calculate for all w 
-         cnt = 1
+        cnt = 1
         for w ∈ sync.w_min : sync.w_max
             # For larger values of blank regions, this is _Σ with the additional pixels on left and right
             _Σ += 2*c_v[modIndex(c-w,sync.n)] 
