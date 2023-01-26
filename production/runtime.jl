@@ -75,7 +75,6 @@ function start_runtime(duration,device=:radiosim)
     # --- Stopping threads
     # ---------------------------------------------------- 
     sleep(duration) 
-
     @info "Stopping all threads"
     # SDR safe stop 
     @async Base.throwto(task_producer,InterruptException())
