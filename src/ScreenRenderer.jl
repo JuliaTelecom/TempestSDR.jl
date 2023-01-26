@@ -4,7 +4,7 @@ module ScreenRenderer
 # ----------------------------------------------------
 # --- Dependencies 
 # ---------------------------------------------------- 
-import Base:close  #FIXME necessary here ?
+import Base:close 
 using ImageInTerminal
 using Images, ImageView
 using Gtk
@@ -64,7 +64,7 @@ end
 struct GtkRendererScreen <: AbstractScreenRenderer 
     p::AbstractDict
     function GtkRendererScreen(height,width)
-        mat = zeros(width,width)
+        mat = zeros(height,width)
         fullScale!(mat)
         guidict = ImageView.imshow(mat)
         new(guidict)
