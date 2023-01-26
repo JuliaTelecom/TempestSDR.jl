@@ -46,11 +46,11 @@ end
 """ Thread Safe circular buffer 
 """
 mutable struct AtomicCircularBuffer{T}
-    ptr_write::AtomicValue
-    ptr_read::AtomicValue 
+    ptr_write::AtomicValue{Int}
+    ptr_read::AtomicValue{Int} 
     buffer::AtomicBuffer{T}
-    t_new::AtomicValue
-    t_stop::AtomicValue
+    t_new::AtomicValue{Int}
+    t_stop::AtomicValue{Int}
     function AtomicCircularBuffer{T}(nEch::Int,depth::Int) where T
         buffer = AtomicBuffer{T}(nEch,depth)
         ptr_w  = AtomicValue{Int}(0,ReentrantLock())
@@ -138,7 +138,7 @@ end
 # ----------------------------------------------------
 # --- Producer
 # ---------------------------------------------------- 
-function circ_put!(circ_buff::AtomicCircularBuffer,data) 
+function circ_put!(circ_buff::AtomicCircularBuffer{T},data::Vector{T}) where T 
     # Where put data ? 
     pos = atomic_read(circ_buff.ptr_write)
     #@info  "Tx => $pos"
@@ -155,7 +155,7 @@ end
 # ----------------------------------------------------
 # --- Consummers
 # ---------------------------------------------------- 
-function circ_take!(buffer,circ_buff::AtomicCircularBuffer)
+function circ_take!(buffer::Vector{T},circ_buff::AtomicCircularBuffer{T}) where T
     # Where take data ?
     wait_consData(circ_buff)
     pos = atomic_read(circ_buff.ptr_read)
