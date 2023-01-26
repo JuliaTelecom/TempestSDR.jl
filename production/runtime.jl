@@ -1,11 +1,12 @@
 # ----------------------------------------------------
 # --- Multi process environnement 
 # ---------------------------------------------------- 
-include("../setMP.jl")
+#include("../setMP.jl")
+using TempestSDR
 
 
 
-@everywhere begin 
+#@everywhere begin 
     # ----------------------------------------------------
     # --- Template signal for radiosim
     # ---------------------------------------------------- 
@@ -25,12 +26,10 @@ include("../setMP.jl")
     # ----------------------------------------------------
     # --- Mode for runtime 
     # ---------------------------------------------------- 
-    global RUNTIME_MODE = :radiosim
-    #global RUNTIME_MODE = :pluto
-end
+#end
 
 
-function start_runtime(duration)
+function start_runtime(duration,device=:radiosim)
     # ----------------------------------------------------
     # --- SDR parameters 
     # ---------------------------------------------------- 
@@ -48,15 +47,15 @@ function start_runtime(duration)
     # ----------------------------------------------------
     # --- Instantiate radio 
     # ---------------------------------------------------- 
-    if RUNTIME_MODE == :radiosim 
-        runtime = init_tempestSDR_runtime(:radiosim,carrierFreq,samplingRate,gain;addr="usb:1.4.5",bufferSize=nbS,buffer=sigRx,packetSize=nbS,renderer=:makie)
+    if device == :radiosim 
+        runtime = init_tempestSDR_runtime(:radiosim,carrierFreq,samplingRate,gain;addr="usb:1.4.5",bufferSize=nbS,buffer=sigRx,packetSize=nbS,renderer=:gtk)
     else 
-        runtime = init_tempestSDR_runtime(RUNTIME_MODE,carrierFreq,samplingRate,gain;addr="usb:1.4.5",bufferSize=nbS,renderer=:makie)
+        runtime = init_tempestSDR_runtime(device,carrierFreq,samplingRate,gain;addr="usb:1.4.5",bufferSize=nbS,renderer=:makie)
     end
     # ----------------------------------------------------
     # --- Start radio threads 
     # ---------------------------------------------------- 
-    task_producer = start_remote_sdr(runtime.csdr)
+    task_producer = Threads.@spawn start_thread_sdr(runtime.csdr)
     # ----------------------------------------------------
     # --- First extract autocorrelation properties 
     # ---------------------------------------------------- 
@@ -77,7 +76,7 @@ function start_runtime(duration)
 
     @info "Stopping all threads"
     # SDR safe stop 
-    stop_remote_sdr() 
+    @async Base.throwto(task_producer,InterruptException())
     sleep(1)
     # Task stop (rather hard here :D)
     @async Base.throwto(task_consummer,InterruptException())

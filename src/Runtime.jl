@@ -1,5 +1,9 @@
+using FFTW 
+using AbstractSDRs
+
+
 mutable struct TempestSDRRuntime
-    csdr::LocalProcessSDR
+    csdr::MultiThreadSDR
     config::VideoMode
     renderer::Symbol
     #screen::AbstractScreenRenderer
@@ -9,7 +13,7 @@ end
 
 function init_tempestSDR_runtime(args...;bufferSize=1024,renderer=:gtk,kw...)
     # --- Configure the SDR remotely
-    csdr = open_remote_sdr(args...;kw...,bufferSize)
+    csdr = open_thread_sdr(args...;kw...,bufferSize)
     # --- Configure the Video 
     # This is a default value here, we maybe can do better
     config = VideoMode(1024,768,60) 
@@ -33,7 +37,7 @@ function extract_configuration(runtime::TempestSDRRuntime)
     # --- Get long signal to compute metrics 
     # ---------------------------------------------------- 
     # --- Core parameters for the SDR 
-    Fs = @remote_sdr getSamplingRate(_)
+    Fs = getSamplingRate(runtime.csdr.sdr)
     # --- Number of buffers used for configuration calculation 
     nbBuffer = 4
     # Instantiate a long buffer to get all the data from the SDR 
@@ -95,7 +99,7 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
     # ----------------------------------------------------
     # --- Radio parameters 
     # ---------------------------------------------------- 
-    @show Fs = @remote_sdr getSamplingRate(_)
+    @show Fs = getSamplingRate(runtime.csdr.sdr)
     x_t = theConfig.width    # Number of column
     y_t = theConfig.height   # Number of lines 
     fv  = theConfig.refresh

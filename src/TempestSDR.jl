@@ -4,12 +4,10 @@ module TempestSDR
 # --- Dependencies 
 # ---------------------------------------------------- 
 using Reexport 
-using FFTW 
-#using AbstractSDRs
+# 
 using Distributed 
 
 
-const PID_SDR = 2
 
 # ----------------------------------------------------
 # --- Dat file managment

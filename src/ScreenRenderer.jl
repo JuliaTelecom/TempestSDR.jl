@@ -64,7 +64,7 @@ end
 struct GtkRendererScreen <: AbstractScreenRenderer 
     p::AbstractDict
     function GtkRendererScreen(height,width)
-        mat = zeros(height,width)
+        mat = zeros(width,width)
         fullScale!(mat)
         guidict = ImageView.imshow(mat)
         new(guidict)
