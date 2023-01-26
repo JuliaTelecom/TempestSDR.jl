@@ -2,7 +2,7 @@ mutable struct TempestSDRRuntime
     csdr::LocalProcessSDR
     config::VideoMode
     renderer::Symbol
-    screen::AbstractScreenRenderer
+    #screen::AbstractScreenRenderer
     atomicImage::AtomicCircularBuffer
 end
 
@@ -14,11 +14,12 @@ function init_tempestSDR_runtime(args...;bufferSize=1024,renderer=:gtk,kw...)
     # This is a default value here, we maybe can do better
     config = VideoMode(1024,768,60) 
     # --- Init the screen renderer 
-    screen = initScreenRenderer(renderer,config.height,config.width)
+    #screen = initScreenRenderer(renderer,config.height,config.width)
     # --- Init the circular buffer 
     atomicImage = AtomicCircularBuffer{Float32}(config.height * config.width,4)
     # --- Create runtime structure 
-    return TempestSDRRuntime(csdr,config,renderer,screen,atomicImage)
+    #return TempestSDRRuntime(csdr,config,renderer,screen,atomicImage)
+    return TempestSDRRuntime(csdr,config,renderer,atomicImage)
 end
 
 
@@ -158,7 +159,7 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
 end
 
 
-function image_rendering(runtime::TempestSDRRuntime)
+function image_rendering(runtime::TempestSDRRuntime,screen)
     # ----------------------------------------------------
     # --- Extract parameters 
     # ---------------------------------------------------- 
@@ -175,7 +176,9 @@ function image_rendering(runtime::TempestSDRRuntime)
         circ_take!(_tmp,runtime.atomicImage)
         imageOut .= reshape(_tmp,y_t,x_t)
         cnt += 1
-        displayScreen!(runtime.screen,imageOut)
+        displayScreen!(screen,imageOut)
+        sleep(0.01)
+        yield()
     end
     tFinal = time() - tInit 
     @info "Render $cnt Images in $tFinal seconds"

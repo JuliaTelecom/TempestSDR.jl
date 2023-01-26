@@ -61,10 +61,12 @@ function start_runtime(duration)
     # --- First extract autocorrelation properties 
     # ---------------------------------------------------- 
     extract_configuration(runtime)
+    screen = initScreenRenderer(runtime.renderer,runtime.config.width,runtime.config.height)
+
     # ----------------------------------------------------
     # --- Launching image generation 
     # ---------------------------------------------------- 
-    task_rendering  = @async image_rendering(runtime)
+    task_rendering  = Threads.@spawn image_rendering(runtime,screen)
     task_consummer  = @async coreProcessing(runtime)
 
 
