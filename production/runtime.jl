@@ -61,13 +61,15 @@ function start_runtime(duration)
     # --- First extract autocorrelation properties 
     # ---------------------------------------------------- 
     extract_configuration(runtime)
-    screen = initScreenRenderer(runtime.renderer,runtime.config.width,runtime.config.height)
+    screen = initScreenRenderer(runtime.renderer,runtime.config.height,runtime.config.width)
 
     # ----------------------------------------------------
     # --- Launching image generation 
     # ---------------------------------------------------- 
-    task_rendering  = Threads.@spawn image_rendering(runtime,screen)
-    task_consummer  = @async coreProcessing(runtime)
+    # Rendering with @async to ensure this is on main thread 
+    task_rendering  = @async image_rendering(runtime,screen)
+    # Consommation in remote thread
+    task_consummer  = Threads.@spawn coreProcessing(runtime)
 
 
     # ----------------------------------------------------
@@ -84,5 +86,5 @@ function start_runtime(duration)
     @async Base.throwto(task_rendering,InterruptException())
 
     #stop_runtime(runtime)
-    return (;runtime,task_producer,task_consummer,task_rendering)
+    return (;runtime,task_producer,task_consummer,task_rendering,screen)
 end
