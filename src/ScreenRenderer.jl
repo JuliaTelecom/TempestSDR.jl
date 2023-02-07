@@ -26,7 +26,7 @@ export displayScreen
 export displayScreen! 
 export displayScreen_vsync! 
 export close 
-
+#export plotInteractiveCorrelation
 # ----------------------------------------------------
 # --- Utils 
 # ---------------------------------------------------- 
@@ -92,18 +92,57 @@ end
 # Structure 
 mutable struct MakieRendererScreen <: AbstractScreenRenderer
     figure::Any 
-    ax::Any
+    axis_image::Any 
+    axis_refresh::Any 
+    axis_yt::Any
     plot::Any
     function MakieRendererScreen(height,width)
-        #figure = Figure(resolution=(1200,800))
-        # With heatmap, we need to have transposed matrixes
-        m = randn(Float32,width,height)
-        figure, ax, plot_obj = heatmap(m,figure=(;resolution=(1800,1200)),colormap=Reverse("Greys"),fxaa=false)
-        ax.yreversed=true
+        # --- Define the Grid Layout 
+        figure = Figure(resolution=(1800,1200))
+        g_im = figure[1:4, 1:2] = GridLayout()
+        g_T = figure[5, 1:3] = GridLayout()
+        g_Z = figure[6, 1:3] = GridLayout()
+        # --- Add a first image
+        axIm = Makie.Axis(g_im[1,1])
+        m = randn(Float32,height,width)
+        plot_obj = _plotHeatmap(axIm,m)
+        # --- Display the first lines for correlation 
+        axT = Makie.Axis(g_T[1,1])
+        delay = 1 : 100
+        corr = zeros(Float32,100)
+        _plotInteractiveCorrelation(axT,delay,corr)
+        # The zoomed correlation 
+        axZ = Makie.Axis(g_Z[1,1])
+        _plotInteractiveCorrelation(axZ,delay,corr)
+        # Display the image 
+        #display(GLMakie.Screen(),figure)
         display(figure)
-        new(figure,ax,plot_obj)
+        # Final constructor
+        new(figure,axIm,axT,axZ,plot_obj)
     end
 end
+
+function _plotInteractiveCorrelation(axis,delay,corr,select_f=0) 
+    # Empty the axis in case of redrawn 
+    empty!(axis)
+    # Plot the correlation
+    lines!(axis,delay,corr)
+    # Add a vertical lines for refresh selection
+    text!(axis,"r", visible = false)
+    vlines!(axis,select_f,color = :tomato,linewidth = 3.00)
+end
+
+
+function _plotHeatmap(axis,image) 
+    # Empty the axis in case of redrawn 
+    empty!(axis)
+    plot_obj = heatmap!(axis,collect(transpose(image)),colormap=Reverse("Greys"),fxaa=false)
+    axis.yreversed=true
+    return plot_obj
+end
+
+
+
 function displayScreen!(b::MakieRendererScreen,img)
     #img2 = abs.(1 .-fullScale!(img))
     b.plot[1] = img'

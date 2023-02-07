@@ -4,12 +4,26 @@ module Autocorrelations
 # --- Dependencies 
 # ---------------------------------------------------- 
 using FFTW 
+using Makie, GLMakie 
 
 # ----------------------------------------------------
 # --- Exportations 
 # ---------------------------------------------------- 
 export calculate_autocorrelation
 export zoom_autocorr
+#export InteractiveCorrelation
+#export interactive_correlation
+
+
+#mutable struct  InteractiveCorrelation 
+    #fig::Any 
+    #ax::Any 
+    #p::Any 
+    #t::Any 
+    #vF::Any 
+#end
+    
+
 
 # ----------------------------------------------------
 # --- Methods 
@@ -49,5 +63,6 @@ function zoom_autocorr(Γ,Fs;rate_min=20,rate_max=100)
     return (xARate, Γ[pos_rate_min:pos_rate_max])
 
 end
+
 
 end

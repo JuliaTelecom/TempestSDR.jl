@@ -1,29 +1,46 @@
 using FFTW 
 using AbstractSDRs
+using Makie, GLMakie 
 
+
+# ----------------------------------------------------
+# --- Global variables 
+# ---------------------------------------------------- 
+# Flags 
+FLAG_CONFIG_UPDATE = false 
+FLAG_HEATMAP = true 
+# Configuration
+CONFIG =  VideoMode(1024,768,60) 
+SAMPLING_RATE = 20e6
+# Channels 
+channelImage = Channel{Matrix{Float32}}(16) 
+
+# ----------------------------------------------------
+# --- Channel for image tranfert between renderer and processor
+# ---------------------------------------------------- 
+@inline function non_blocking_put!(image)
+    global channelImage
+    if channelImage.n_avail_items == channelImage.sz_max 
+        ## This is full 
+        take!(channelImage) 
+    end 
+    put!(channelImage,image)
+end 
 
 mutable struct TempestSDRRuntime
     csdr::MultiThreadSDR
-    config::VideoMode
-    renderer::Symbol
-    #screen::AbstractScreenRenderer
-    atomicImage::AtomicCircularBuffer
 end
 
 
-function init_tempestSDR_runtime(args...;bufferSize=1024,renderer=:gtk,kw...)
+function init_tempestSDR_runtime(args...;bufferSize=1024,kw...)
+    global CONFIG, SAMPLING_RATE
     # --- Configure the SDR remotely
     csdr = open_thread_sdr(args...;kw...,bufferSize)
+    SAMPLING_RATE = getSamplingRate(csdr.sdr)
     # --- Configure the Video 
     # This is a default value here, we maybe can do better
-    config = VideoMode(1024,768,60) 
-    # --- Init the screen renderer 
-    #screen = initScreenRenderer(renderer,config.height,config.width)
-    # --- Init the circular buffer 
-    atomicImage = AtomicCircularBuffer{Float32}(config.height * config.width,4)
-    # --- Create runtime structure 
-    #return TempestSDRRuntime(csdr,config,renderer,screen,atomicImage)
-    return TempestSDRRuntime(csdr,config,renderer,atomicImage)
+    CONFIG = TempestSDR.allVideoConfigurations["1920x1200 @ 60Hz"]
+    return TempestSDRRuntime(csdr)
 end
 
 
@@ -32,12 +49,13 @@ end
 """" Calculate the a priori configuration of the received iage and returns a Video configuration 
 """ 
 function extract_configuration(runtime::TempestSDRRuntime)
+    global CONFIG, FLAG_HEATMAP, SAMPLING_RATE
     @info "Search screen configuration in given signal."
     # ----------------------------------------------------
     # --- Get long signal to compute metrics 
     # ---------------------------------------------------- 
     # --- Core parameters for the SDR 
-    Fs = getSamplingRate(runtime.csdr.sdr)
+    Fs = SAMPLING_RATE
     # --- Number of buffers used for configuration calculation 
     nbBuffer = 4
     # Instantiate a long buffer to get all the data from the SDR 
@@ -54,68 +72,182 @@ function extract_configuration(runtime::TempestSDRRuntime)
     @info "Calculate the correlation"
     # Calculate the autocorrelation for this buffer 
     (Γ,τ) = calculate_autocorrelation(sigCorr,Fs,0,1/10)
-    rates_large,Γ_short_large = zoom_autocorr(Γ,Fs;rate_min=50,rate_max=90)
+    rates_refresh,Γ_refresh = zoom_autocorr(Γ,Fs;rate_min=50,rate_max=90)
     # ----------------------------------------------------
     # --- Get the screen rate 
     # ---------------------------------------------------- 
     # ---Find the max 
-    (valMax,posMax) = findmax(Γ_short_large)
-    posMax_time = 1/rates_large[posMax]
+    (valMax,posMax) = findmax(Γ_refresh)
+    posMax_time = 1/rates_refresh[posMax]
     fv = round(1/ posMax_time;digits=2)
-    @info "Position of the max @ $posMax_time seconds [Rate is $fv]"
-    # Get the line 
-    y_t = let 
-        m = findmax(Γ)[2]
-        m2 = findmax(Γ[m .+ (1:20)])[2]
-        τ = m2 / Fs 
-        1 / (fv * τ)
-    end
-    y_t = 1158
+    @info "Selected refresh rate is $fv"
     # ----------------------------------------------------
-    # --- Deduce configuration 
+    # --- Screen configuration 
     # ---------------------------------------------------- 
-    theConfigFound = first(find_closest_configuration(y_t,fv))
-    @info "Closest configuration found is $theConfigFound"
-    theConfig = theConfigFound[2] # VideoMode config
-    theConfig = TempestSDR.allVideoConfigurations["1920x1200 @ 60Hz"]
-    finalConfig = VideoMode(theConfig.width,1235,fv)
-    @info "Chosen configuration found is $(find_configuration(theConfig)) => $finalConfig"
+    _,Γ_yt = zoom_autocorr(Γ,Fs;rate_min=fv,rate_max=fv+0.3)
+    N = 500
+    #Γ_yt = Γ_yt[1:N]
+    Γ_yt = Γ_refresh[posMax .+ (1:N)]
+    rates_yt = range(0,step=1/Fs,length=N)
+    select_y = findmax(Γ_yt)[2] / Fs
+    y_t = delay2yt(select_y,fv)
+    @info "Number of lines is $y_t"
     # ----------------------------------------------------
-    # --- Update runtime 
+    # --- Prepare output
     # ---------------------------------------------------- 
-    runtime.config = finalConfig 
-    runtime.atomicImage = AtomicCircularBuffer{Float32}(finalConfig.height * finalConfig.width,4)
-    #runtime.screen = initScreenRenderer(screenRenderer,finalConfig.height,finalConfig.width)
-    sleep(0.1)
+    # Size of image will be changed
+    FLAG_HEATMAP = true
+    # Update configuration based on max a priori 
+    config = find_closest_configuration(y_t,fv) |> dict2video
+    CONFIG = config 
+    CONFIG.height = y_t 
+    CONFIG.refresh = fv
+    @info "Screen configuration is $CONFIG"
+    #@show CONFIG = finalConfig
+    return rates_refresh,Γ_refresh,rates_yt,Γ_yt,fv,select_y # TODO Here returns this and in future put in channel ?
+end
+
+""" Switch from a correlation lag (in second or couple delay in samples and Fs) to a number of pixel estimation
+"""
+function delay2yt(τ,fv) 
+    return round( 1 / (fv * τ))
+end 
+function delay2yt(index,Fs,fv) 
+    return delay2yt(index/Fs,fv)
 end
 
 
+""" Listener to select the refresh rate based on the correlation. 
+It draws a vertical lines at the selected location and a text pop up 
+"""
+function listener_refresh(screen)
+    global CONFIG, FLAG_CONFIG_UPDATE
+    # ----------------------------------------------------
+    # --- Find scene with correlation 
+    # ---------------------------------------------------- 
+    fig = screen.figure   # Figure 
+    ax  = fig.content[2]  # Axis for correlation  
+    t   = ax.scene[2]     # Second index is the text 
+    vL  = ax.scene[3]     # Third index is the vline 
+    # ----------------------------------------------------
+    # --- Add the listener 
+    # ---------------------------------------------------- 
+    on(events(fig.scene).mousebutton) do mp
+        if mp.button == Mouse.left
+            if is_mouseinside(ax.scene)
+                select_f,amp = mouseposition(ax.scene)
+                # Adding the annotation on the plot 
+                t.position = (select_f,amp)
+                t[1] = " $select_f"
+                t.visible = true
+                # Print a vertical line at this location 
+                #vL[1] = round(select_f) # FIXME Why int ?
+                vL[1] = select_f # FIXME Why int ?
+                #FIXME Call back to update the config ?
+                FLAG_CONFIG_UPDATE = true
+                CONFIG.refresh = select_f
+            end
+        end
+    end
+end
+
+function listener_yt(screen)
+    global CONFIG, FLAG_CONFIG_UPDATE, SAMPLING_RATE
+    # ----------------------------------------------------
+    # --- Find scene with correlation 
+    # ---------------------------------------------------- 
+    fig = screen.figure   # Figure 
+    ax  = fig.content[3]  # Axis for correlation  for y_t 
+    t   = ax.scene[2]     # Second index is the text 
+    vL  = ax.scene[3]     # Third index is the vline 
+    # ----------------------------------------------------
+    # --- Add the listener 
+    # ---------------------------------------------------- 
+    on(events(fig.scene).mousebutton) do mp
+        if mp.button == Mouse.left
+            if is_mouseinside(ax.scene)
+                select_y,amp = mouseposition(ax.scene)
+                # Adding the annotation on the plot 
+                t.position = (select_y,amp)
+                t.visible = true
+                vL[1] = select_y
+                # Print a vertical line at this location 
+                #vL[1] = round(select_f) # FIXME Why int ?
+                # Change selection of f to a number of lines 
+                fv = CONFIG.refresh
+                @show y_t = delay2yt(select_y,fv)
+                t[1] = " $(y_t)"
+                # Config will be changed 
+                FLAG_CONFIG_UPDATE = true
+                # Find the closest configuration 
+                theConfig = find_closest_configuration(y_t,fv) |> dict2video
+                # Keep the rate as we have chosen 
+                theConfig.refresh = fv
+                theConfig.height= y_t
+                CONFIG = theConfig
+            end
+        end
+    end
+end
+
+
+
+""" Add the correlation plot to the Makie figure 
+"""
+function plot_findRefresh(screen,rates,Γ,fv=0) 
+    ScreenRenderer._plotInteractiveCorrelation(screen.axis_refresh,rates,Γ,fv) 
+    listener_refresh(screen)
+    #lines!(ax,rates,Γ)
+end
+
+function plot_findyt(screen,rates,Γ,fv=0) 
+    ScreenRenderer._plotInteractiveCorrelation(screen.axis_yt,rates,Γ,fv) 
+    listener_yt(screen)
+    #lines!(ax,rates,Γ)
+end
+
+
+""" Init the buffer associated to image rendering. Necessary at the beginning of the processing routine or each time the rendering configuration is updated 
+"""
+function update_image_containers(theConfig::VideoMode,Fs) 
+    T = Float32
+    # Unpack config 
+    x_t = theConfig.width    # Number of column
+    y_t = theConfig.height   # Number of lines 
+    fv  = theConfig.refresh
+    # Size of images 
+    image_size_down = round( Fs /fv) |> Int
+    # Init arrays 
+    imageOut = zeros(T,y_t,x_t)
+    image_mat = zeros(T,y_t,x_t)
+
+    return (x_t,y_t,image_size_down,imageOut,image_mat)
+
+end
+init_image_containers = update_image_containers
+
 function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration 
+    global CONFIG, FLAG_CONFIG_UPDATE, SAMPLING_RATE, channelImage
     # ----------------------------------------------------
     # --- Overall parameters 
     # ---------------------------------------------------- 
     csdr = runtime.csdr
-    theConfig = runtime.config
     # ----------------------------------------------------
     # --- Radio parameters 
     # ---------------------------------------------------- 
-    @show Fs = getSamplingRate(runtime.csdr.sdr)
-    x_t = theConfig.width    # Number of column
-    y_t = theConfig.height   # Number of lines 
-    fv  = theConfig.refresh
+    Fs = SAMPLING_RATE
+
     #  Signal from radio 
     sigId = zeros(ComplexF32, csdr.circ_buff.buffer.nEch)
     sigAbs = zeros(Float32, csdr.circ_buff.buffer.nEch)
-    # Image format 
-    @show image_size_down = round( Fs /fv) |> Int
-    image_size = x_t * y_t |> Int # Size of final image 
+    # ----------------------------------------------------
+    # --- Image 
+    # ---------------------------------------------------- 
+    (x_t,y_t,image_size_down,imageOut,image_mat) = init_image_containers(CONFIG,Fs)
     nbIm = length(csdr.buffer) ÷ image_size_down   # Number of image at SDR rate 
-    T = Float32
-    image_mat = zeros(T,y_t,x_t)
     # ----------------------------------------------------
     # --- Image renderer 
     # ---------------------------------------------------- 
-    imageOut = zeros(T,y_t,x_t)
     # Frame sync 
     sync = SyncXY(image_mat)
     # Measure 
@@ -123,33 +255,41 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
     tInit = time()
     ## 
     cnt = 0
-    α = T(0.9)
+    α = Float32(0.9)
     τ = 0.0
     do_align = true
     try 
         while(true)
+            # Look for configuration update 
+            if FLAG_CONFIG_UPDATE == true 
+                (x_t,y_t,image_size_down,imageOut,image_mat) = init_image_containers(CONFIG,Fs)
+                nbIm = length(csdr.buffer) ÷ image_size_down   # Number of image at SDR rate 
+                sync = SyncXY(image_mat)
+                FLAG_CONFIG_UPDATE = false 
+                @show CONFIG
+            end
+            # Receive samples from SDR
             recv!(sigId,csdr)
             sigAbs .= abs.(sigId)
             for n in 1:nbIm - 4 
                 theView = @views sigAbs[n*image_size_down .+ (1:image_size_down)]
-                 #Getting an image from the current buffer 
-                 image_mat = sig_to_image(theView,y_t,x_t)
+                #Getting an image from the current buffer 
+                image_mat = sig_to_image(theView,y_t,x_t)
                 # Frame synchronisation  
                 if do_align == true 
                     tup = vsync(image_mat,sync)
                     image_mat = circshift(image_mat,(-tup[1],-tup[2]))
                 end
                 # Low pass filter
-                 imageOut = (1-α) * imageOut .+ α * image_mat
-                #imageOut .= image_mat
-                 #Putting data  
-                 circ_put!(runtime.atomicImage,collect(view(imageOut,:)))
+                imageOut = (1-α) * imageOut .+ α * image_mat
+                #Putting data  
+                non_blocking_put!(imageOut)
                 cnt += 1
             end
             yield()
         end
     catch exception 
-        #rethrow(exception)
+        rethrow(exception)
     end
     tFinal = time() - tInit 
     rate = round(cnt / tFinal;digits=2)
@@ -158,29 +298,36 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
 end
 
 
-function image_rendering(runtime::TempestSDRRuntime,screen)
+
+function image_rendering(screen)
+    global channelImage, FLAG_HEATMAP
     # ----------------------------------------------------
     # --- Extract parameters 
     # ---------------------------------------------------- 
-    x_t = runtime.config.width 
-    y_t = runtime.config.height 
-    # Init vectors
-    _tmp = zeros(Float32,x_t*y_t)
-    imageOut = zeros(Float32,y_t,x_t)
+    fig = screen.figure   # Figure 
+    ax  = fig.content[1]  # Axis for heatmap
     # Loop for rendering 
     cnt = 0
     tInit = time()
+    imageDisplay = zeros(Float32,800,600)
     try 
         while (true)
             # Get a new image 
-            circ_take!(_tmp,runtime.atomicImage)
-            imageOut .= reshape(_tmp,y_t,x_t)
+            imageOut = take!(channelImage)
+            imageDisplay .= downgradeImage(imageOut)
             cnt += 1
-            displayScreen!(screen,imageOut)
+            if FLAG_HEATMAP == true 
+                # We need to redraw the heatmap 
+                screen.plot = ScreenRenderer._plotHeatmap(ax,imageDisplay)
+                FLAG_HEATMAP = false
+            else 
+                displayScreen!(screen,imageDisplay)
+            end
             sleep(0.01)
             yield()
         end
     catch exception 
+        rethrow(exception)
     end
     tFinal = time() - tInit 
     @info "Render $cnt Images in $tFinal seconds"

@@ -16,6 +16,7 @@ using Images
 export init_resampler
 export naiveResampler
 export sig_to_image
+export downgradeImage
 # ----------------------------------------------------
 # --- Methods
 # ---------------------------------------------------- 
@@ -118,6 +119,10 @@ function sig_to_image(sig,y_t,x_t)
     image_mat  = transpose(reshape(imresize(sig,image_size),x_t,y_t))
     #image_mat  = transpose(reshape(imresize(sig,image_size),y_t,x_t))
     return image_mat
+end
+
+function downgradeImage(image)
+    return imresize(image,(800,600))
 end
 
 

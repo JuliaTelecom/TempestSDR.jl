@@ -59,7 +59,10 @@ include("ThreadSDRs.jl")
 include("Runtime.jl")
 export TempestSDRRuntime
 export init_tempestSDR_runtime
+export plot_findyt
+export plot_findRefresh
 export extract_configuration
+export listener_refresh
 export coreProcessing
 export image_rendering
 
