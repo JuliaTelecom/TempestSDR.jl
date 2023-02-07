@@ -141,3 +141,6 @@ function find_configuration(video::VideoMode)
     end 
 end
 
+function dict2video(subdict)
+    return collect(values(subdict))[1]
+end
