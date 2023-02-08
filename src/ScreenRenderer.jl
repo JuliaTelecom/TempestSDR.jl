@@ -110,10 +110,10 @@ mutable struct MakieRendererScreen <: AbstractScreenRenderer
         axT = Makie.Axis(g_T[1,1])
         delay = 1 : 100
         corr = zeros(Float32,100)
-        _plotInteractiveCorrelation(axT,delay,corr,0,:turquoise4)
+        _plotInteractiveCorrelation(axT,delay,corr,0.0,:turquoise4)
         # The zoomed correlation 
         axZ = Makie.Axis(g_Z[1,1])
-        _plotInteractiveCorrelation(axZ,delay,corr,0,:gold4)
+        _plotInteractiveCorrelation(axZ,delay,corr,0.0,:gold4)
         # Display the image 
         #display(GLMakie.Screen(),figure)
         display(figure)
@@ -122,7 +122,7 @@ mutable struct MakieRendererScreen <: AbstractScreenRenderer
     end
 end
 
-function _plotInteractiveCorrelation(axis,delay,corr,select_f=0,color=:gold4) 
+function _plotInteractiveCorrelation(axis,delay,corr,select_f=0.0,color=:gold4) 
     # Empty the axis in case of redrawn 
     empty!(axis)
     # Plot the correlation

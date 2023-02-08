@@ -2,7 +2,7 @@
 # --- Multi process environnement 
 # ---------------------------------------------------- 
 using TempestSDR
-
+using AbstractSDRs 
 # ----------------------------------------------------
 # --- Template signal for radiosim
 # ---------------------------------------------------- 
@@ -43,6 +43,7 @@ function start_runtime(device=:radiosim,renderer=:makie)
     runtime = init_tempestSDR_runtime(device,carrierFreq,samplingRate,gain;addr="usb:0.9.5",bufferSize=nbS,buffer=sigRx,packetSize=nbS)
     # --- Start radio thread for IQ recv
     print(runtime.csdr.sdr)
+    Fs = getSamplingRate(runtime.csdr.sdr)
     task_producer = Threads.@spawn start_thread_sdr(runtime.csdr)
 
 
@@ -58,7 +59,7 @@ function start_runtime(device=:radiosim,renderer=:makie)
     # ---------------------------------------------------- 
      r,g,r_yt,g_yt,fv,yt = extract_configuration(runtime)
      @show fv, yt
-     plot_findRefresh(screen,r,g,fv)
+     plot_findRefresh(screen,r,g,Fs,fv)
      plot_findyt(screen,r_yt,g_yt,yt)
 
     # ----------------------------------------------------

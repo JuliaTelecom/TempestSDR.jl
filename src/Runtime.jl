@@ -31,7 +31,8 @@ mutable struct TempestSDRRuntime
     csdr::MultiThreadSDR
 end
 
-
+""" Create the virtual or real SDR for data transmission. The SDR uses AbstractSDRs API and is set to be launched in a dedicated thread 
+"""
 function init_tempestSDR_runtime(args...;bufferSize=1024,kw...)
     global CONFIG, SAMPLING_RATE
     # --- Configure the SDR remotely
@@ -86,9 +87,7 @@ function extract_configuration(runtime::TempestSDRRuntime)
     # ----------------------------------------------------
     # --- Screen configuration 
     # ---------------------------------------------------- 
-    _,Γ_yt = zoom_autocorr(Γ,Fs;rate_min=fv,rate_max=fv+0.3)
-    N = 500
-    #Γ_yt = Γ_yt[1:N]
+    N = 1000
     Γ_yt = Γ_refresh[posMax .+ (1:N)]
     rates_yt = range(0,step=1/Fs,length=N)
     select_y = findmax(Γ_yt)[2] / Fs
@@ -122,7 +121,7 @@ end
 """ Listener to select the refresh rate based on the correlation. 
 It draws a vertical lines at the selected location and a text pop up 
 """
-function listener_refresh(screen)
+function listener_refresh(screen,rates_refresh,Γ_refresh,Fs)
     global CONFIG, FLAG_CONFIG_UPDATE
     # ----------------------------------------------------
     # --- Find scene with correlation 
@@ -143,11 +142,16 @@ function listener_refresh(screen)
                 t[1] = " $select_f"
                 t.visible = true
                 # Print a vertical line at this location 
-                #vL[1] = round(select_f) # FIXME Why int ?
                 vL[1] = select_f # FIXME Why int ?
-                #FIXME Call back to update the config ?
+                # Update configuration
                 FLAG_CONFIG_UPDATE = true
                 CONFIG.refresh = select_f
+                # Update the lines plot
+                N = 1000
+                posMax = argmin(abs.(rates_refresh .- select_f))
+                Γ_yt = Γ_refresh[posMax .+ (1:N)]
+                r = range(0,step=1/Fs,length=N)
+                plot_findyt(screen,r,Γ_yt,0.0) 
             end
         end
     end
@@ -177,7 +181,7 @@ function listener_yt(screen)
                 #vL[1] = round(select_f) # FIXME Why int ?
                 # Change selection of f to a number of lines 
                 fv = CONFIG.refresh
-                @show y_t = delay2yt(select_y,fv)
+                y_t = delay2yt(select_y,fv)
                 t[1] = " $(y_t)"
                 # Config will be changed 
                 FLAG_CONFIG_UPDATE = true
@@ -196,13 +200,13 @@ end
 
 """ Add the correlation plot to the Makie figure 
 """
-function plot_findRefresh(screen,rates,Γ,fv=0) 
+function plot_findRefresh(screen,rates,Γ,Fs,fv=0.0) 
     ScreenRenderer._plotInteractiveCorrelation(screen.axis_refresh,rates,Γ,fv,:gold2) 
-    listener_refresh(screen)
+    listener_refresh(screen,rates,Γ,Fs)
     #lines!(ax,rates,Γ)
 end
 
-function plot_findyt(screen,rates,Γ,fv=0) 
+function plot_findyt(screen,rates,Γ,fv=0.0) 
     ScreenRenderer._plotInteractiveCorrelation(screen.axis_yt,rates,Γ,fv,:turquoise4) 
     listener_yt(screen)
     #lines!(ax,rates,Γ)
