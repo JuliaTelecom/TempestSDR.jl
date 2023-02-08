@@ -29,7 +29,7 @@ function start_runtime(device=:radiosim,renderer=:makie)
     carrierFreq  = 764e6
     samplingRate = 20e6
     gain         = 50 
-    acquisition   = 0.70
+    acquisition   = 0.50
     #nbS = Int( 80 * 99900)
     nbS = Int(round(acquisition * samplingRate))
 
@@ -40,7 +40,7 @@ function start_runtime(device=:radiosim,renderer=:makie)
     # ----------------------------------------------------
     # --- Instantiate radio 
     # ---------------------------------------------------- 
-    runtime = init_tempestSDR_runtime(device,carrierFreq,samplingRate,gain;addr="usb:1.4.5",bufferSize=nbS,buffer=sigRx,packetSize=nbS)
+    runtime = init_tempestSDR_runtime(device,carrierFreq,samplingRate,gain;addr="usb:0.9.5",bufferSize=nbS,buffer=sigRx,packetSize=nbS)
     # --- Start radio thread for IQ recv
     print(runtime.csdr.sdr)
     task_producer = Threads.@spawn start_thread_sdr(runtime.csdr)
@@ -73,7 +73,6 @@ function start_runtime(device=:radiosim,renderer=:makie)
     println(".")
 
     @info "Tasks spawned"
-    sleep(1)
     return (;runtime,task_producer,task_consummer,task_rendering,screen)
 end
 

@@ -7,13 +7,13 @@ using Makie, GLMakie
 # --- Global variables 
 # ---------------------------------------------------- 
 # Flags 
-FLAG_CONFIG_UPDATE = false 
-FLAG_HEATMAP = true 
+FLAG_CONFIG_UPDATE::Bool = false 
+FLAG_HEATMAP::Bool = true 
 # Configuration
-CONFIG =  VideoMode(1024,768,60) 
-SAMPLING_RATE = 20e6
+CONFIG::VideoMode =  VideoMode(1024,768,60) 
+SAMPLING_RATE::Float64 = 20e6
 # Channels 
-channelImage = Channel{Matrix{Float32}}(16) 
+channelImage::Channel = Channel{Matrix{Float32}}(16) 
 
 # ----------------------------------------------------
 # --- Channel for image tranfert between renderer and processor
@@ -210,7 +210,6 @@ end
 """ Init the buffer associated to image rendering. Necessary at the beginning of the processing routine or each time the rendering configuration is updated 
 """
 function update_image_containers(theConfig::VideoMode,Fs) 
-    T = Float32
     # Unpack config 
     x_t = theConfig.width    # Number of column
     y_t = theConfig.height   # Number of lines 
@@ -218,13 +217,12 @@ function update_image_containers(theConfig::VideoMode,Fs)
     # Size of images 
     image_size_down = round( Fs /fv) |> Int
     # Init arrays 
-    imageOut = zeros(T,y_t,x_t)
-    image_mat = zeros(T,y_t,x_t)
+    imageOut = zeros(Float32,y_t,x_t)
+    image_mat = zeros(Float32,y_t,x_t)
 
     return (x_t,y_t,image_size_down,imageOut,image_mat)
 
 end
-init_image_containers = update_image_containers
 
 function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration 
     global CONFIG, FLAG_CONFIG_UPDATE, SAMPLING_RATE, channelImage
@@ -243,7 +241,7 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
     # ----------------------------------------------------
     # --- Image 
     # ---------------------------------------------------- 
-    (x_t,y_t,image_size_down,imageOut,image_mat) = init_image_containers(CONFIG,Fs)
+    (x_t,y_t,image_size_down,imageOut,image_mat) = update_image_containers(CONFIG,Fs)
     nbIm = length(csdr.buffer) ÷ image_size_down   # Number of image at SDR rate 
     # ----------------------------------------------------
     # --- Image renderer 
@@ -262,7 +260,7 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
         while(true)
             # Look for configuration update 
             if FLAG_CONFIG_UPDATE == true 
-                (x_t,y_t,image_size_down,imageOut,image_mat) = init_image_containers(CONFIG,Fs)
+                (x_t,y_t,image_size_down,imageOut,image_mat) = update_image_containers(CONFIG,Fs)
                 nbIm = length(csdr.buffer) ÷ image_size_down   # Number of image at SDR rate 
                 sync = SyncXY(image_mat)
                 FLAG_CONFIG_UPDATE = false 
@@ -313,7 +311,7 @@ function image_rendering(screen)
     try 
         while (true)
             # Get a new image 
-            imageOut = take!(channelImage)
+            imageOut = take!(channelImage)::Matrix{Float32}
             imageDisplay .= downgradeImage(imageOut)
             cnt += 1
             if FLAG_HEATMAP == true 

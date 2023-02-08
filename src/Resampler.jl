@@ -116,7 +116,7 @@ Note that this is for rendering and that this matrix should be transposed in ord
 """
 function sig_to_image(sig,y_t,x_t)
     image_size = y_t * x_t
-    image_mat  = transpose(reshape(imresize(sig,image_size),x_t,y_t))
+    image_mat  = collect(transpose(reshape(imresize(sig,image_size),x_t,y_t)))
     #image_mat  = transpose(reshape(imresize(sig,image_size),y_t,x_t))
     return image_mat
 end

@@ -42,7 +42,7 @@ INTERRUPT_REMOTE::Bool = false
 mutable struct MultiThreadSDR 
     sdr::AbstractSDR
     buffer::Vector{ComplexF32} 
-    circ_buff::AtomicCircularBuffer 
+    circ_buff::AtomicCircularBuffer{ComplexF32} 
     nbStored::Int 
     nbDropped::Int 
     nbProcessed::Int
