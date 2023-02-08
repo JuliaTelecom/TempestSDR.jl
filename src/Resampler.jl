@@ -122,7 +122,7 @@ function sig_to_image(sig,y_t,x_t)
 end
 
 function downgradeImage(image)
-    return imresize(image,(800,600))
+    return imresize(image,(600,800))
 end
 
 

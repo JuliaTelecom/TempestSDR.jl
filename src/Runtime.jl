@@ -66,7 +66,9 @@ function extract_configuration(runtime::TempestSDRRuntime)
     for n ∈ 1 : nbBuffer 
         # Getting buffer from radio 
         ThreadSDRs.recv!(_tmp,runtime.csdr)
-        println(runtime.csdr.circ_buff.ptr_write.ptr)
+        w = (runtime.csdr.circ_buff.ptr_write.ptr)
+        r = (runtime.csdr.circ_buff.ptr_read.ptr)
+        @info "Atomic write $w \t Atomic read $r "
         sigCorr[ (n-1)*buffSize .+ (1:buffSize)] .= abs2.(_tmp)
     end
     @info "Calculate the correlation"
@@ -100,7 +102,7 @@ function extract_configuration(runtime::TempestSDRRuntime)
     # Update configuration based on max a priori 
     config = find_closest_configuration(y_t,fv) |> dict2video
     CONFIG = config 
-    CONFIG.height = y_t 
+    #CONFIG.height = y_t 
     CONFIG.refresh = fv
     @info "Screen configuration is $CONFIG"
     #@show CONFIG = finalConfig
@@ -195,13 +197,13 @@ end
 """ Add the correlation plot to the Makie figure 
 """
 function plot_findRefresh(screen,rates,Γ,fv=0) 
-    ScreenRenderer._plotInteractiveCorrelation(screen.axis_refresh,rates,Γ,fv) 
+    ScreenRenderer._plotInteractiveCorrelation(screen.axis_refresh,rates,Γ,fv,:gold2) 
     listener_refresh(screen)
     #lines!(ax,rates,Γ)
 end
 
 function plot_findyt(screen,rates,Γ,fv=0) 
-    ScreenRenderer._plotInteractiveCorrelation(screen.axis_yt,rates,Γ,fv) 
+    ScreenRenderer._plotInteractiveCorrelation(screen.axis_yt,rates,Γ,fv,:turquoise4) 
     listener_yt(screen)
     #lines!(ax,rates,Γ)
 end
@@ -253,7 +255,7 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
     tInit = time()
     ## 
     cnt = 0
-    α = Float32(0.9)
+    α = Float32(1.0)
     τ = 0.0
     do_align = true
     try 
@@ -287,7 +289,7 @@ function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration
             yield()
         end
     catch exception 
-        rethrow(exception)
+        #rethrow(exception)
     end
     tFinal = time() - tInit 
     rate = round(cnt / tFinal;digits=2)
@@ -307,7 +309,7 @@ function image_rendering(screen)
     # Loop for rendering 
     cnt = 0
     tInit = time()
-    imageDisplay = zeros(Float32,800,600)
+    imageDisplay = zeros(Float32,600,800)
     try 
         while (true)
             # Get a new image 

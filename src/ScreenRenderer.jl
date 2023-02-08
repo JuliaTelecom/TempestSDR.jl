@@ -98,10 +98,10 @@ mutable struct MakieRendererScreen <: AbstractScreenRenderer
     plot::Any
     function MakieRendererScreen(height,width)
         # --- Define the Grid Layout 
-        figure = Figure(resolution=(1800,1200))
-        g_im = figure[1:4, 1:2] = GridLayout()
-        g_T = figure[5, 1:3] = GridLayout()
-        g_Z = figure[6, 1:3] = GridLayout()
+        figure = Figure(backgroundcolor=:lightgrey,resolution=(1800,1200))
+        g_im = figure[1:6, 1:2] = GridLayout()
+        g_T = figure[7, 1:3] = GridLayout()
+        g_Z = figure[8, 1:3] = GridLayout()
         # --- Add a first image
         axIm = Makie.Axis(g_im[1,1])
         m = randn(Float32,height,width)
@@ -110,10 +110,10 @@ mutable struct MakieRendererScreen <: AbstractScreenRenderer
         axT = Makie.Axis(g_T[1,1])
         delay = 1 : 100
         corr = zeros(Float32,100)
-        _plotInteractiveCorrelation(axT,delay,corr)
+        _plotInteractiveCorrelation(axT,delay,corr,0,:turquoise4)
         # The zoomed correlation 
         axZ = Makie.Axis(g_Z[1,1])
-        _plotInteractiveCorrelation(axZ,delay,corr)
+        _plotInteractiveCorrelation(axZ,delay,corr,0,:gold4)
         # Display the image 
         #display(GLMakie.Screen(),figure)
         display(figure)
@@ -122,14 +122,14 @@ mutable struct MakieRendererScreen <: AbstractScreenRenderer
     end
 end
 
-function _plotInteractiveCorrelation(axis,delay,corr,select_f=0) 
+function _plotInteractiveCorrelation(axis,delay,corr,select_f=0,color=:gold4) 
     # Empty the axis in case of redrawn 
     empty!(axis)
     # Plot the correlation
-    lines!(axis,delay,corr)
+    lines!(axis,delay,corr;color)
     # Add a vertical lines for refresh selection
     text!(axis,"r", visible = false)
-    vlines!(axis,select_f,color = :tomato,linewidth = 3.00)
+    vlines!(axis,select_f,color=:tomato,linewidth = 3.00)
 end
 
 
