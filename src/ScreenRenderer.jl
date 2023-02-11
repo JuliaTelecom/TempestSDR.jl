@@ -95,6 +95,7 @@ mutable struct MakieRendererScreen <: AbstractScreenRenderer
     axis_image::Any 
     axis_refresh::Any 
     axis_yt::Any
+    layout_panel::Any
     plot::Any
     function MakieRendererScreen(height,width)
         # --- Define the Grid Layout 
@@ -102,6 +103,7 @@ mutable struct MakieRendererScreen <: AbstractScreenRenderer
         g_im = figure[1:6, 1:2] = GridLayout()
         g_T = figure[7, 1:3] = GridLayout()
         g_Z = figure[8, 1:3] = GridLayout()
+        g_P = figure[1:6,3] = GridLayout()
         # --- Add a first image
         axIm = Makie.Axis(g_im[1,1])
         m = randn(Float32,height,width)
@@ -114,11 +116,15 @@ mutable struct MakieRendererScreen <: AbstractScreenRenderer
         # The zoomed correlation 
         axZ = Makie.Axis(g_Z[1,1])
         _plotInteractiveCorrelation(axZ,delay,corr,0.0,:gold4)
+        # The information panel 
+        axtop = Makie.Axis(g_P[1, 1])
+        axbott = Makie.Axis(g_P[2:4, 1])
+        tb = Textbox(axtop.scene, placeholder = "yt ", validator = Int64, tellwidth = false)
+
         # Display the image 
-        #display(GLMakie.Screen(),figure)
         display(figure)
         # Final constructor
-        new(figure,axIm,axT,axZ,plot_obj)
+        new(figure,axIm,axT,axZ,axT,plot_obj)
     end
 end
 
@@ -136,7 +142,7 @@ end
 function _plotHeatmap(axis,image) 
     # Empty the axis in case of redrawn 
     empty!(axis)
-    plot_obj = heatmap!(axis,collect(transpose(image)),colormap=Reverse("Greys"),fxaa=false)
+    plot_obj = heatmap!(axis,collect(transpose(image)),colormap=Reverse("Greys"))
     axis.yreversed=true
     return plot_obj
 end

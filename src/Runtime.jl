@@ -2,18 +2,18 @@ using FFTW
 using AbstractSDRs
 using Makie, GLMakie 
 
-
-# ----------------------------------------------------
-# --- Global variables 
-# ---------------------------------------------------- 
-# Flags 
-FLAG_CONFIG_UPDATE::Bool = false 
-FLAG_HEATMAP::Bool = true 
-# Configuration
-CONFIG::VideoMode =  VideoMode(1024,768,60) 
-SAMPLING_RATE::Float64 = 20e6
-# Channels 
-channelImage::Channel = Channel{Matrix{Float32}}(16) 
+#const RENDERING_SIZE = (600,600)
+## ----------------------------------------------------
+## --- Global variables 
+## ---------------------------------------------------- 
+## Flags 
+#FLAG_CONFIG_UPDATE::Bool = false 
+#FLAG_HEATMAP::Bool = true 
+## Configuration
+#CONFIG::VideoMode =  VideoMode(1024,768,60) 
+#SAMPLING_RATE::Float64 = 20e6
+## Channels 
+#channelImage::Channel = Channel{Matrix{Float32}}(16) 
 
 # ----------------------------------------------------
 # --- Channel for image tranfert between renderer and processor
@@ -27,9 +27,9 @@ channelImage::Channel = Channel{Matrix{Float32}}(16)
     put!(channelImage,image)
 end 
 
-mutable struct TempestSDRRuntime
-    csdr::MultiThreadSDR
-end
+#mutable struct TempestSDRRuntime
+    #csdr::MultiThreadSDR
+#end
 
 """ Create the virtual or real SDR for data transmission. The SDR uses AbstractSDRs API and is set to be launched in a dedicated thread 
 """
@@ -37,11 +37,8 @@ function init_tempestSDR_runtime(args...;bufferSize=1024,kw...)
     global CONFIG, SAMPLING_RATE
     # --- Configure the SDR remotely
     csdr = open_thread_sdr(args...;kw...,bufferSize)
-    SAMPLING_RATE = getSamplingRate(csdr.sdr)
     # --- Configure the Video 
-    # This is a default value here, we maybe can do better
-    CONFIG = TempestSDR.allVideoConfigurations["1920x1200 @ 60Hz"]
-    return TempestSDRRuntime(csdr)
+    return csdr
 end
 
 
@@ -49,7 +46,7 @@ end
 
 """" Calculate the a priori configuration of the received iage and returns a Video configuration 
 """ 
-function extract_configuration(runtime::TempestSDRRuntime)
+function extract_configuration(runtime::MultiThreadSDR)
     global CONFIG, FLAG_HEATMAP, SAMPLING_RATE
     @info "Search screen configuration in given signal."
     # ----------------------------------------------------
@@ -118,99 +115,101 @@ function delay2yt(index,Fs,fv)
 end
 
 
-""" Listener to select the refresh rate based on the correlation. 
-It draws a vertical lines at the selected location and a text pop up 
-"""
-function listener_refresh(screen,rates_refresh,Γ_refresh,Fs)
-    global CONFIG, FLAG_CONFIG_UPDATE
-    # ----------------------------------------------------
-    # --- Find scene with correlation 
-    # ---------------------------------------------------- 
-    fig = screen.figure   # Figure 
-    ax  = fig.content[2]  # Axis for correlation  
-    t   = ax.scene[2]     # Second index is the text 
-    vL  = ax.scene[3]     # Third index is the vline 
-    # ----------------------------------------------------
-    # --- Add the listener 
-    # ---------------------------------------------------- 
-    on(events(fig.scene).mousebutton) do mp
-        if mp.button == Mouse.left
-            if is_mouseinside(ax.scene)
-                select_f,amp = mouseposition(ax.scene)
-                # Adding the annotation on the plot 
-                t.position = (select_f,amp)
-                t[1] = " $select_f"
-                t.visible = true
-                # Print a vertical line at this location 
-                vL[1] = select_f # FIXME Why int ?
-                # Update configuration
-                FLAG_CONFIG_UPDATE = true
-                CONFIG.refresh = select_f
-                # Update the lines plot
-                N = 1000
-                posMax = argmin(abs.(rates_refresh .- select_f))
-                Γ_yt = Γ_refresh[posMax .+ (1:N)]
-                r = range(0,step=1/Fs,length=N)
-                plot_findyt(screen,r,Γ_yt,0.0) 
-            end
-        end
-    end
-end
+#""" Listener to select the refresh rate based on the correlation. 
+#It draws a vertical lines at the selected location and a text pop up. It also update the plot of the line finder based on the selected area of the correlation
+#"""
+#function listener_refresh(screen,rates_refresh,Γ_refresh,Fs)
+    #global CONFIG, FLAG_CONFIG_UPDATE
+    ## ----------------------------------------------------
+    ## --- Find scene with correlation 
+    ## ---------------------------------------------------- 
+    #fig = screen.figure   # Figure 
+    #ax  = fig.content[2]  # Axis for correlation  
+    #t   = ax.scene[2]     # Second index is the text 
+    #vL  = ax.scene[3]     # Third index is the vline 
+    ## ----------------------------------------------------
+    ## --- Add the listener 
+    ## ---------------------------------------------------- 
+    #on(events(fig.scene).mousebutton) do mp
+        #if mp.button == Mouse.left
+            #if is_mouseinside(ax.scene)
+                #select_f,amp = mouseposition(ax.scene)
+                ## Adding the annotation on the plot 
+                #t.position = (select_f,amp)
+                #t[1] = " $select_f"
+                #t.visible = true
+                ## Print a vertical line at this location 
+                #vL[1] = select_f # FIXME Why int ?
+                ## Update configuration
+                #FLAG_CONFIG_UPDATE = true
+                #CONFIG.refresh = select_f
+                ## Update the lines plot
+                #N = 1000
+                #posMax = argmin(abs.(rates_refresh .- select_f))
+                #Γ_yt = Γ_refresh[posMax .+ (1:N)]
+                #r = range(0,step=1/Fs,length=N)
+                #plot_findyt(screen,r,Γ_yt,0.0) 
+            #end
+        #end
+    #end
+#end
 
-function listener_yt(screen)
-    global CONFIG, FLAG_CONFIG_UPDATE, SAMPLING_RATE
-    # ----------------------------------------------------
-    # --- Find scene with correlation 
-    # ---------------------------------------------------- 
-    fig = screen.figure   # Figure 
-    ax  = fig.content[3]  # Axis for correlation  for y_t 
-    t   = ax.scene[2]     # Second index is the text 
-    vL  = ax.scene[3]     # Third index is the vline 
-    # ----------------------------------------------------
-    # --- Add the listener 
-    # ---------------------------------------------------- 
-    on(events(fig.scene).mousebutton) do mp
-        if mp.button == Mouse.left
-            if is_mouseinside(ax.scene)
-                select_y,amp = mouseposition(ax.scene)
-                # Adding the annotation on the plot 
-                t.position = (select_y,amp)
-                t.visible = true
-                vL[1] = select_y
-                # Print a vertical line at this location 
-                #vL[1] = round(select_f) # FIXME Why int ?
-                # Change selection of f to a number of lines 
-                fv = CONFIG.refresh
-                y_t = delay2yt(select_y,fv)
-                t[1] = " $(y_t)"
-                # Config will be changed 
-                FLAG_CONFIG_UPDATE = true
-                # Find the closest configuration 
-                theConfig = find_closest_configuration(y_t,fv) |> dict2video
-                # Keep the rate as we have chosen 
-                theConfig.refresh = fv
-                theConfig.height= y_t
-                CONFIG = theConfig
-            end
-        end
-    end
-end
+#""" Listener to plot the line finder 
+#"""
+#function listener_yt(screen)
+    #global CONFIG, FLAG_CONFIG_UPDATE, SAMPLING_RATE
+    ## ----------------------------------------------------
+    ## --- Find scene with correlation 
+    ## ---------------------------------------------------- 
+    #fig = screen.figure   # Figure 
+    #ax  = fig.content[3]  # Axis for correlation  for y_t 
+    #t   = ax.scene[2]     # Second index is the text 
+    #vL  = ax.scene[3]     # Third index is the vline 
+    ## ----------------------------------------------------
+    ## --- Add the listener 
+    ## ---------------------------------------------------- 
+    #on(events(fig.scene).mousebutton) do mp
+        #if mp.button == Mouse.left
+            #if is_mouseinside(ax.scene)
+                #select_y,amp = mouseposition(ax.scene)
+                ## Adding the annotation on the plot 
+                #t.position = (select_y,amp)
+                #t.visible = true
+                #vL[1] = select_y
+                ## Print a vertical line at this location 
+                ##vL[1] = round(select_f) # FIXME Why int ?
+                ## Change selection of f to a number of lines 
+                #fv = CONFIG.refresh
+                #y_t = delay2yt(select_y,fv)
+                #t[1] = " $(y_t)"
+                ## Config will be changed 
+                #FLAG_CONFIG_UPDATE = true
+                ## Find the closest configuration 
+                #theConfig = find_closest_configuration(y_t,fv) |> dict2video
+                ## Keep the rate as we have chosen 
+                #theConfig.refresh = fv
+                #theConfig.height= y_t
+                #CONFIG = theConfig
+            #end
+        #end
+    #end
+#end
 
 
 
-""" Add the correlation plot to the Makie figure 
-"""
-function plot_findRefresh(screen,rates,Γ,Fs,fv=0.0) 
-    ScreenRenderer._plotInteractiveCorrelation(screen.axis_refresh,rates,Γ,fv,:gold2) 
-    listener_refresh(screen,rates,Γ,Fs)
-    #lines!(ax,rates,Γ)
-end
+#""" Add the correlation plot to the Makie figure 
+#"""
+#function plot_findRefresh(screen,rates,Γ,Fs,fv=0.0) 
+    #ScreenRenderer._plotInteractiveCorrelation(screen.axis_refresh,rates,Γ,fv,:gold2) 
+    #listener_refresh(screen,rates,Γ,Fs)
+    ##lines!(ax,rates,Γ)
+#end
 
-function plot_findyt(screen,rates,Γ,fv=0.0) 
-    ScreenRenderer._plotInteractiveCorrelation(screen.axis_yt,rates,Γ,fv,:turquoise4) 
-    listener_yt(screen)
-    #lines!(ax,rates,Γ)
-end
+#function plot_findyt(screen,rates,Γ,fv=0.0) 
+    #ScreenRenderer._plotInteractiveCorrelation(screen.axis_yt,rates,Γ,fv,:turquoise4) 
+    #listener_yt(screen)
+    ##lines!(ax,rates,Γ)
+#end
 
 
 """ Init the buffer associated to image rendering. Necessary at the beginning of the processing routine or each time the rendering configuration is updated 
@@ -230,7 +229,7 @@ function update_image_containers(theConfig::VideoMode,Fs)
 
 end
 
-function coreProcessing(runtime::TempestSDRRuntime)     # Extract configuration 
+function coreProcessing(runtime::MultiThreadSDR)     # Extract configuration 
     global CONFIG, FLAG_CONFIG_UPDATE, SAMPLING_RATE, channelImage
     # ----------------------------------------------------
     # --- Overall parameters 
