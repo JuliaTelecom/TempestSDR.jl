@@ -110,8 +110,8 @@ mutable struct MakieRendererScreen <: AbstractScreenRenderer
         plot_obj = _plotHeatmap(axIm,m)
         # --- Display the first lines for correlation 
         axT = Makie.Axis(g_T[1,1])
-        delay = 1 : 100
-        corr = zeros(Float32,100)
+        delay = collect(1 : 100)
+        corr = randn(Float32,100)
         _plotInteractiveCorrelation(axT,delay,corr,0.0,:turquoise4)
         # The zoomed correlation 
         axZ = Makie.Axis(g_Z[1,1])
@@ -130,12 +130,12 @@ end
 
 function _plotInteractiveCorrelation(axis,delay,corr,select_f=0.0,color=:gold4) 
     # Empty the axis in case of redrawn 
-    empty!(axis)
-    # Plot the correlation
-    lines!(axis,delay,corr;color)
+    #empty!(axis)
     # Add a vertical lines for refresh selection
     text!(axis,"r", visible = false)
     vlines!(axis,select_f,color=:tomato,linewidth = 3.00)
+    # Plot the correlation
+    lines!(axis,delay,corr;color)
 end
 
 

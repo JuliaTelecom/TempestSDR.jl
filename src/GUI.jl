@@ -1,6 +1,8 @@
 using AbstractSDRs
 using Makie, GLMakie 
 using Base.Threads
+using GLMakie: Observable, Observables 
+Callback = Observables.ObserverFunction
 # ----------------------------------------------------
 # --- Constant 
 # ---------------------------------------------------- 
@@ -269,7 +271,7 @@ function listener_refresh(fig)
     t   = ax.scene[2]     # Second index is the text 
     vL  = ax.scene[3]     # Third index is the vline 
     # Interactions on Refresh plane 
-    on(events(fig.scene).mousebutton) do mp
+    cb = on(events(fig.scene).mousebutton) do mp
         if mp.button == Mouse.left
             if is_mouseinside(ax.scene)
                 select_f,amp = mouseposition(ax.scene)
@@ -278,13 +280,14 @@ function listener_refresh(fig)
                 t[1] = " $select_f"
                 t.visible = true
                 # Print a vertical line at this location 
-                vL[1] = select_f # FIXME Why int ?
+                @show vL[1] = select_f # FIXME Why int ?
                 # Update configuration
                 FLAG_CONFIG_UPDATE = true
                 OBS_fv[] = select_f
             end
         end
     end
+    return cb
 end
 
 function listener_yt(fig)
@@ -298,7 +301,7 @@ function listener_yt(fig)
     # ----------------------------------------------------
     # --- Add the listener 
     # ---------------------------------------------------- 
-    on(events(fig.scene).mousebutton) do mp
+    cb = on(events(fig.scene).mousebutton) do mp
         if mp.button == Mouse.left
             if is_mouseinside(ax.scene)
                 select_y,amp = mouseposition(ax.scene)
@@ -323,6 +326,7 @@ function listener_yt(fig)
             end
         end
     end
+    return cb
 end
 
 
@@ -393,31 +397,30 @@ function start_runtime()
     nbS = Int(round(acquisition * samplingRate))
     # Radio 
     csdr = open_thread_sdr(:radiosim,carrierFreq,samplingRate,gain;addr="usb:0.9.5",bufferSize=nbS,buffer=sigRx,packetSize=nbS)
-    global task_producer = Threads.@spawn start_thread_sdr(csdr)
 
-    global task_consummer  = Threads.@spawn coreProcessing(csdr)
-
+    task_producer   = Threads.@spawn start_thread_sdr(csdr)
+    task_consummer  = Threads.@spawn coreProcessing(csdr)
     task_rendering  = @async image_rendering(gui)
 
 
     # ----------------------------------------------------
     # --- GUI definition 
     # ---------------------------------------------------- 
-    btnStart = gui.fig.content[4]
-    boxRefresh  = gui.fig.content[6]
-    boxYt       = gui.fig.content[8]
-    btnYt_plus  = gui.fig.content[9]
-    btnYt_minus = gui.fig.content[10]
-    plot_image  = gui.fig.content[1]
-    plot_refresh= gui.fig.content[2]
-    plot_yt     = gui.fig.content[3]
+    btnStart = gui.fig.content[4]::Button
+    boxRefresh  = gui.fig.content[6]::Textbox 
+    boxYt       = gui.fig.content[8]::Textbox 
+    btnYt_plus  = gui.fig.content[9]::Button 
+    btnYt_minus = gui.fig.content[10]::Button
+    plot_image  = gui.fig.content[1]::Axis 
+    plot_refresh= gui.fig.content[2]::Axis 
+    plot_yt     = gui.fig.content[3]::Axis
 
 
     # ----------------------------------------------------
     # --- Observables 
     # ---------------------------------------------------- 
     # List of observables, to be turned on in destruction 
-    list_cb = []
+    list_cb = Vector{Callback}(undef,0)
     """ If we change the rate in the input box 
     -> Change the rate of observable 
     -> Redraw the correlation with line at proper place 
@@ -426,7 +429,7 @@ function start_runtime()
         # 
         rr = parse(Float64, fv)
         OBS_fv[] = rr 
-        OBS_Corr[] = true
+        #OBS_Corr[] = true
     end
     push!(list_cb,cb_box_fv)
 
@@ -439,9 +442,9 @@ function start_runtime()
         # 
         Fs = OBS_Fs[]::Float64
         rr = parse(Float64, yt)
-        OBS_yt[] = rr 
+        OBS_yt[] = rr
         #OBS_Corr[] = true
-        fv = OBS_fv[] 
+        fv = OBS_fv[]::Float64 
         vv = yt2index(OBS_yt[],Fs,fv)
         plot_refresh.scene[3][1] = vv # FIXME 
 #        N = 1000
@@ -458,11 +461,11 @@ function start_runtime()
     cb_click_plus = on(btnYt_plus.clicks) do clk 
         OBS_yt[] = OBS_yt[] + 1 
         boxYt.stored_string = string(OBS_yt[])
-        OBS_yt[], OBS_fv[]
         pos = yt2delay(OBS_yt[],OBS_fv[])
         y_y = OBS_yt[]
-        plot_yt.scene[3][1] = pos
-        plot_yt.scene[2][1] = string(y_y)
+        #plot_yt.scene[3][1] = pos
+        #gui.fig.content[3].scene[3][1] = pos
+        #plot_yt.scene[2][1] = string(y_y)
         
     end
     push!(list_cb,cb_click_plus)
@@ -519,8 +522,8 @@ function start_runtime()
         Γ_yt = Γ_refresh[posMax .+ (1:N)]
         r = range(0,step=1/OBS_Fs[],length=N)
         y_t = delay2yt(OBS_yt[],fv)
-         plot_findyt(gui.fig,r,Γ_yt,y_t) 
-
+        _cbyt::Callback = plot_findyt(gui.fig,r,Γ_yt,y_t) 
+        push!(list_cb,_cbyt)
     end
     push!(list_cb,cb_fv)
 
@@ -559,7 +562,6 @@ function start_runtime()
         VIDEO_CONFIG.height= yt
         VIDEO_CONFIG.width = theConfig.width
         boxYt.displayed_string= string(yt) # Update panel w/o laucnh cb
-
     end
     push!(list_cb,cb_yt)
 
@@ -568,8 +570,10 @@ function start_runtime()
     """
     cb_corr = on(OBS_Corr) do new_corr
         if new_corr == true 
-            plot_findRefresh(gui.fig,rates_refresh,Γ_refresh,OBS_fv[])
+            @info "here"
+            _cb_corr::Callback = plot_findRefresh(gui.fig,rates_refresh,Γ_refresh,OBS_fv[])
             OBS_Corr[] = false 
+            push!(list_cb,_cb_corr)
         end 
     end
     push!(list_cb,cb_corr)
@@ -594,13 +598,12 @@ function start_runtime()
     -> 1 : Correlation and auto config 
     -> 2 : Processing mode for image rendering 
     """
-    cb_task = on(OBS_Task) do task 
+    cb_task::Callback = on(OBS_Task) do task 
         if task == 1 
             # ----------------------------------------------------
             # --- Configuration task 
             # ---------------------------------------------------- 
             rates_refresh,Γ_refresh,fv = extract_configuration(csdr)
-            OBS_fv[] = fv
             OBS_Corr[] = true
             OBS_Task[] = 2
         elseif task == 2 
@@ -634,6 +637,8 @@ function stop_runtime(tup)
         # Remove all observables from GUI
         off(cb) 
     end
+    #tup.list_cb = nothing
+    GC.gc()
     destroy(tup.gui)
     return nothing
 end
