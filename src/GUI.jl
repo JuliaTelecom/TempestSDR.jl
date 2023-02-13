@@ -52,7 +52,7 @@ function extract_configuration(csdr::MultiThreadSDR)
     # --- Core parameters for the SDR 
     Fs = OBS_Fs[]::Float64
     # --- Number of buffers used for configuration calculation 
-    nbBuffer = 4
+    nbBuffer = 12
     # Instantiate a long buffer to get all the data from the SDR 
     buffSize = length(csdr.buffer)
     sigCorr  = zeros(Float32, nbBuffer * buffSize) 
@@ -150,10 +150,10 @@ function coreProcessing(csdr::MultiThreadSDR)
                 x_t = VIDEO_CONFIG.width
                 y_t = VIDEO_CONFIG.height
             end
-            # Receive samples from SDR
-            recv!(sigId,csdr)
-            sigAbs .= abs.(sigId)
             if OBS_Task[] == 2 
+                # Receive samples from SDR
+                recv!(sigId,csdr)
+                sigAbs .= abs.(sigId)
                 for n in 1:nbIm - 4 
                     theView = @views sigAbs[n*image_size_down .+ (1:image_size_down)]
                     ##Getting an image from the current buffer 
@@ -169,6 +169,10 @@ function coreProcessing(csdr::MultiThreadSDR)
                     non_blocking_put!(imageOut)
                     cnt += 1
                 end
+            else 
+                 # Sleepy mode
+                sleep(0.1);
+                yield()
             end
         end
     catch exception 
@@ -305,12 +309,16 @@ function start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;kw...)
     # ---------------------------------------------------- 
      # Parameters 
 
-    @info "Loading data"
-    local completePath = "/Users/Robin/data_tempest/testX310.dat"
-    sigRx = readComplexBinary(completePath,:single)
-    nbS = Int(round(acquisition * samplingRate))
-    # Radio 
-    csdr = open_thread_sdr(sdr,carrierFreq,samplingRate,gain;bufferSize=nbS,buffer=sigRx,packetSize=nbS,kw...)
+     nbS = Int(round(acquisition * samplingRate))
+     if sdr == :radiosim 
+         @info "Loading data"
+         local completePath = "/Users/Robin/data_tempest/testX310.dat"
+         sigRx = readComplexBinary(completePath,:single)
+     else 
+         sigRx = zeros(ComplexF32,nbS)
+     end 
+     # Radio 
+     csdr = open_thread_sdr(sdr,carrierFreq,samplingRate,gain;bufferSize=nbS,buffer=sigRx,packetSize=nbS,kw...)
 
    
 
