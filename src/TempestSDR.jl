@@ -67,7 +67,8 @@ include("ThreadSDRs.jl")
 #export image_rendering
 
 
-include("GUI2.jl")
+include("GUI.jl")
+export gui
 export start_runtime
 export stop_runtime
 end
