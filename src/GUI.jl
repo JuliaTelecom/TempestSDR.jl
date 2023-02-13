@@ -32,10 +32,8 @@ VIDEO_CONFIG::VideoMode = VideoMode(1024,768,60)
 # Correlations 
 rates_refresh::Vector{Float32} = []
 Γ_refresh::Vector{Float32} = []
-#rates_yt::Vector{Float32} = []
-#Γ_yt::Vector{Float32} = []
 # Channel for renderer 
-channelImage::Channel = Channel{Matrix{Float32}}(16) 
+channelImage::Channel = Channel{Matrix{Float32}}(128) 
 
 mutable struct GUI 
     fig::Any 

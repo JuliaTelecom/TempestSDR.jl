@@ -5,7 +5,6 @@ module FrameSynchronisation
 # --- Dependencies 
 # ---------------------------------------------------- 
 using DSP 
-using LoopVectorization
 # ----------------------------------------------------
 # --- Exportations
 # ---------------------------------------------------- 

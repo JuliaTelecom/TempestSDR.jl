@@ -1,7 +1,7 @@
 name = "TempestSDR"
 uuid = "a2deda47-164f-4e4d-810f-425bbd57e6e7"
 authors = ["Robin Gerzaguet <robin.gerzaguet@irisa.fr> and contributors"]
-version = "0.1.0"
+version = "0.7.0"
 
 [deps]
 AbstractSDRs = "0bdde9fc-719a-4dc7-8589-49ca6634fa6b"
@@ -17,11 +17,8 @@ ImageInTerminal = "d8c32880-2388-543b-8c61-d9f865259254"
 ImageView = "86fae568-95e7-573e-a6b2-d8a6b900c9ef"
 Images = "916415d5-f1e6-5110-898d-aaa5f9f070e0"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-LoopVectorization = "bdcacae8-1622-11e9-2a5c-532679323890"
 Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
-Peaks = "18e31ff7-3703-566c-8e60-38913d67486b"
 Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
-Sockets = "6462fe0b-24de-5631-8697-dd941f90decc"
 
 [compat]
 julia = "1"

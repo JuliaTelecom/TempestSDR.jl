@@ -74,15 +74,12 @@ pZoom = fig()
 xAx = (0 : length(Γ_short)-1) ./ Fs
 plot!(pZoom;x=xAx,y=Γ_short)
 
-
-
-y_t = let 
-    m = findmax(Γ)[2]
-    m2 = findmax(Γ[m .+ (1:20)])[2]
-    τ = m2 / Fs 
-    1 / (fv * τ)
-end
-y_t = 1158
+N = 500 
+Γ_short = Γ_short[1:N]
+m = findmax(Γ_short)[2]
+τ = m / Fs 
+y_t = 1 / (fv * τ)
+#y_t = 1158
 
 # Here we should take the max but in a very local area
 
@@ -93,7 +90,7 @@ y_t = 1158
 # ---------------------------------------------------- 
 theConfigFound = first(find_closest_configuration(y_t,fv))
 @info "Closest configuration found is $theConfigFound"
-theConfig = theConfigFound[2] # VideoMode config
+theConfigEst = theConfigFound[2] # VideoMode config
 
 theConfig = TempestSDR.allVideoConfigurations["1920x1200 @ 60Hz"]
 finalConfig = VideoMode(theConfig.width,1235,fv)
