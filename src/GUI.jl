@@ -17,6 +17,8 @@ OBS_fv   = Observable{Float64}(60.0)
 OBS_box_fv   = Observable{Float64}(60.0)
 # Observable for sampling frequency
 OBS_Fs   = Observable{Float64}(20e6)
+# Observable for image LPF 
+OBS_α    = Observable{Float32}(0.1)
 # Observable on what we do 
 OBS_Task = Observable{Int}(0)
 # Observable on new correlations 
@@ -136,7 +138,6 @@ function coreProcessing(csdr::MultiThreadSDR)
     @show y_t = VIDEO_CONFIG.height |> Int
     cnt = 0
     do_align = true 
-    α = 1.0
 
     tInit = time()
     try 
@@ -150,6 +151,8 @@ function coreProcessing(csdr::MultiThreadSDR)
                 x_t = VIDEO_CONFIG.width
                 y_t = VIDEO_CONFIG.height
             end
+            # Gain the LPS val 
+            α = OBS_α[]::Float32
             if OBS_Task[] == 2 
                 # Receive samples from SDR
                 recv!(sigId,csdr)
@@ -164,7 +167,7 @@ function coreProcessing(csdr::MultiThreadSDR)
                         image_mat .= circshift(image_mat,(-tup[1],-tup[2]))
                     end
                     # Low pass filter
-                    imageOut .= (1-α) * imageOut .+ α * image_mat
+                    imageOut .= α * imageOut .+ (1-α) * image_mat
                     #Putting data  
                     non_blocking_put!(imageOut)
                     cnt += 1
@@ -231,6 +234,19 @@ function yt2delay(yt,fv)
     return 1/(fv*yt)
 end
 
+""" Switch from MHz to Hz for carrier frequency 
+"""
+HztoMHz(x) = round(x / 1e6;digits=2)
+MHztoHz(x) = x * 1e6 
+
+
+""" Get the description of the video configuration 
+""" 
+function getDescription(video::VideoMode) 
+    dict = find_closest_configuration(video.width,video.refresh) |> first
+    return "$(dict.first)"
+end
+
 # GUI Utils 
 """ Update tooltip of the axis `content` present as a subscene of index `sceneIndex` 
 """
@@ -282,6 +298,8 @@ function start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;kw...)
      ScreenRenderer._plotInteractiveCorrelation(axZ,delay,corr,0.0,:gold4)
      # Run mode 
      btnStart = Button(panelInfo[1,1], label = "START", fontsize=35,halign=:center,tellwidth=false,tellheight=true,cornerradius=12,buttoncolor=RGBf(0.67, 0.91, 0.77))
+    # Panel to Exit
+    bttnKill = Button(panelInfo[1,2], label = "Exit", fontsize=40,halign=:center,tellwidth=true,tellheight=false,cornerradius=12,buttoncolor=RGBf(0.96, 0.71, 0.69))
      # Refresh panel 
      l_fv = Label(panelInfo[2,1], "Refresh Rate",tellwidth = false,fontsize=24,halign=:left)
      boxRefresh = Textbox(panelInfo[2,2], placeholder = "Refresh Rate",validator = Float64, tellwidth = false,fontsize=24,halign=:left)
@@ -294,8 +312,19 @@ function start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;kw...)
     rowgap!(buttongrid,0.15)
     # Panel to redo correlation
     bttnCorr = Button(panelInfo[4,1], label = "Correlate !", fontsize=35,halign=:left,cornerradius=12)
-    # Panel to redo correlation
-    bttnKill = Button(panelInfo[1,2], label = "Exit", fontsize=40,halign=:center,tellwidth=true,tellheight=false,cornerradius=12,buttoncolor=RGBf(0.96, 0.71, 0.69))
+    # Slider for Radio gain 
+     l_gain = Label(panelInfo[5,1], "Radio Gain",tellwidth = false,fontsize=24,halign=:left)
+    sliderGain = Slider(panelInfo[5,2], range = 0:1:30, startvalue = 3)
+    # SDR carrier frequency 
+    l_freq = Label(panelInfo[6,1], "Carrier freq (MHz)",tellwidth = false,fontsize=24,halign=:left)
+    boxFreq = Textbox(panelInfo[6,2], placeholder = "$(HztoMHz(carrierFreq))",validator = Float64, tellwidth = false,fontsize=24,halign=:left)
+    # LPF coefficient 
+     l_filt = Label(panelInfo[7,1], "Low pass filter",tellwidth = false,fontsize=24,halign=:left)
+     sliderLPF = Slider(panelInfo[7,2], range = Float32.(0:0.05:1), startvalue = Float32(OBS_α[]))
+     # Panel for configuration 
+     l_config = Label(panelInfo[8,1], "Configuration ",tellwidth = false,fontsize=24,halign=:left)
+     l_config_out = Label(panelInfo[8,2], "$(getDescription(VIDEO_CONFIG))",tellwidth = false,fontsize=24,halign=:left)
+
 
 
     # Display the image 
@@ -512,6 +541,7 @@ function start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;kw...)
 
 
     """ [OBSERVABLE] Config is updated ! Update its fields 
+    and update the textbox 
     """ 
     cb_update = on(FLAG_CONFIG_UPDATE) do f 
         if FLAG_CONFIG_UPDATE[] == true 
@@ -520,6 +550,8 @@ function start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;kw...)
             VIDEO_CONFIG.width  = video.width 
             VIDEO_CONFIG.height = OBS_yt[] 
             VIDEO_CONFIG.refresh = OBS_fv[]
+            # Display it the textbox
+            l_config_out.text = getDescription(VIDEO_CONFIG)
         end
     end
     push!(list_cb,cb_update)
@@ -540,6 +572,42 @@ function start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;kw...)
         FLAG_KILL = true
     end
     push!(list_cb,cb_kill)
+
+
+    """ Slider of the gain tune the SDR gain 
+    """ 
+    cb_sliderGain  =on(sliderGain.value) do gain 
+        updateGain!(csdr.sdr,gain) 
+    end
+    push!(list_cb,cb_sliderGain)
+
+
+    """ Slider for LPF 
+    """ 
+    cb_slider_lpf = on(sliderLPF.value) do α 
+        OBS_α[] = α 
+    end 
+    push!(list_cb,cb_slider_lpf)
+
+    """ Edit text of carrier frequency => Update SDR 
+    Note that we handle MHz and Hz 
+    """ 
+    cb_box_freq = on(boxFreq.stored_string) do freq
+        # Get the float in MHz 
+        f_MHz = parse(Float64, freq)
+        # Switch to Hz for SDR update 
+        f_Hz = MHztoHz(f_MHz) 
+        # Update the SDR 
+        # Need to get the actual RF freq
+        f_Hz = updateCarrierFreq!(csdr.sdr,f_Hz)
+        # Get the value in MHz 
+        f_MHz = HztoMHz(f_Hz)
+        # Update the observable 
+        OBS_Fs[] = f_Hz 
+        # Update the box 
+        boxFreq.displayed_string = string(f_MHz)
+    end
+    push!(list_cb,cb_box_freq)
 
 
     tup = (;gui,csdr,task_producer,task_consummer,task_rendering,list_cb)
