@@ -35,7 +35,7 @@ VIDEO_CONFIG::VideoMode = VideoMode(1024,768,60)
 rates_refresh::Vector{Float32} = []
 Γ_refresh::Vector{Float32} = []
 # Channel for renderer 
-channelImage::Channel = Channel{Matrix{Float32}}(128) 
+channelImage::Channel = Channel{Matrix{Float32}}(8) 
 
 mutable struct GUI 
     fig::Any 
@@ -52,7 +52,7 @@ function extract_configuration(csdr::MultiThreadSDR)
     # --- Get long signal to compute metrics 
     # ---------------------------------------------------- 
     # --- Core parameters for the SDR 
-    Fs = OBS_Fs[]::Float64
+    Fs = getSamplingRate(csdr.sdr)
     # --- Number of buffers used for configuration calculation 
     nbBuffer = 12
     # Instantiate a long buffer to get all the data from the SDR 
@@ -244,7 +244,7 @@ MHztoHz(x) = x * 1e6
 """ 
 function getDescription(video::VideoMode) 
     dict = find_closest_configuration(video.width,video.refresh) |> first
-    return "$(dict.first)"
+    return ("$(dict.first)","$(dict.second)")
 end
 
 # GUI Utils 
@@ -278,10 +278,10 @@ function start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;kw...)
     # ---------------------------------------------------- 
      # --- Define the Grid Layout 
      figure = Figure(backgroundcolor=:lightgrey,resolution=(1800,1200))
-     panelImage = figure[1:6, 1:3] = GridLayout()
-     panelRefresh = figure[7, 1:4] = GridLayout()
-     panelYt = figure[8, 1:4] = GridLayout()
-     panelInfo = figure[1,4]
+     panelImage = figure[1:2, 1:3] = GridLayout()
+     panelRefresh = figure[3, 1:4] = GridLayout()
+     panelYt = figure[4, 1:4] = GridLayout()
+     panelInfo = figure[1,4] = GridLayout()
      # --- Add a first image
      axIm = Makie.Axis(panelImage[1,1])
      m = randn(Float32,RENDERING_SIZE...)
@@ -305,7 +305,7 @@ function start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;kw...)
      boxRefresh = Textbox(panelInfo[2,2], placeholder = "Refresh Rate",validator = Float64, tellwidth = false,fontsize=24,halign=:left)
      # Panel for yt 
      l_yt = Label(panelInfo[3,1], "Height size",tellwidth = false,fontsize=24,halign=:left)
-     boxYt = Textbox(panelInfo[3,2], placeholder = "yt",validator = Int64, tellwidth = false,fontsize=24,halign=:left)
+     boxYt = Textbox(panelInfo[3,2], placeholder = "$(OBS_yt[])",validator = Int64, tellwidth = false,fontsize=24,halign=:left)
     panelInfo[3, 3] = buttongrid = GridLayout(tellwidth = false,halign=:left)
     btnYt_plus = Button(buttongrid[1,1], label = "+", tellwidth = false,fontsize=24,halign=:left,width=20)
     btnYt_minus = Button(buttongrid[2,1], label = "-", tellwidth = false,fontsize=24,halign=:left,width=20)
@@ -323,8 +323,10 @@ function start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;kw...)
      sliderLPF = Slider(panelInfo[7,2], range = Float32.(0:0.05:1), startvalue = Float32(OBS_α[]))
      # Panel for configuration 
      l_config = Label(panelInfo[8,1], "Configuration ",tellwidth = false,fontsize=24,halign=:left)
-     l_config_out = Label(panelInfo[8,2], "$(getDescription(VIDEO_CONFIG))",tellwidth = false,fontsize=24,halign=:left)
-
+     l_config_out = Label(panelInfo[8,2], "$(getDescription(VIDEO_CONFIG)[1])",tellwidth = false,fontsize=24,halign=:left)
+     # Panel for configuration 
+     #l_config = Label(panelInfo[9,1], "Frame size (theo) ",tellwidth = false,fontsize=24,halign=:left)
+     #l_config_th = Label(panelInfo[9,2], "$(getDescription(VIDEO_CONFIG)[2])",tellwidth = false,fontsize=24,halign=:left)
 
 
     # Display the image 
@@ -473,7 +475,7 @@ function start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;kw...)
         posFv = argmin(abs.(rates_refresh[1:end-N] .- fv)) # Get the position of the selection, from which the zoom is performed
         Γ_yt = Γ_refresh[posFv .+ (1:N)]
         rates_yt = range(0,step=1/OBS_Fs[],length=N)
-        τ_y_t = delay2yt(OBS_yt[],fv) # Delay in s associated to yt
+        @show τ_y_t = yt2delay(OBS_yt[],fv) # Delay in s associated to yt
        # Redraw the correlation 
         delete!(gui.fig.content[3],gui.fig.content[3].scene[3])
         lines!(gui.fig.content[3],rates_yt,Γ_yt,color=:turquoise4)
@@ -551,7 +553,8 @@ function start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;kw...)
             VIDEO_CONFIG.height = OBS_yt[] 
             VIDEO_CONFIG.refresh = OBS_fv[]
             # Display it the textbox
-            l_config_out.text = getDescription(VIDEO_CONFIG)
+            l_config_out.text = getDescription(VIDEO_CONFIG)[1]
+            #l_config_th.text = getDescription(VIDEO_CONFIG)[2]
         end
     end
     push!(list_cb,cb_update)
