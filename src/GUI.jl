@@ -318,12 +318,15 @@ function start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;kw...)
     # SDR carrier frequency 
     l_freq = Label(panelInfo[6,1], "Carrier freq (MHz)",tellwidth = false,fontsize=24,halign=:left)
     boxFreq = Textbox(panelInfo[6,2], placeholder = "$(HztoMHz(carrierFreq))",validator = Float64, tellwidth = false,fontsize=24,halign=:left)
+    # SDR carrier frequency 
+    l_samp = Label(panelInfo[7,1], "Sample Rate (MHz)",tellwidth = false,fontsize=24,halign=:left)
+    boxSamp = Textbox(panelInfo[7,2], placeholder = "$(HztoMHz(samplingRate))",validator = Float64, tellwidth = false,fontsize=24,halign=:left)
     # LPF coefficient 
-     l_filt = Label(panelInfo[7,1], "Low pass filter",tellwidth = false,fontsize=24,halign=:left)
-     sliderLPF = Slider(panelInfo[7,2], range = Float32.(0:0.05:1), startvalue = Float32(OBS_α[]))
+     l_filt = Label(panelInfo[8,1], "Low pass filter",tellwidth = false,fontsize=24,halign=:left)
+     sliderLPF = Slider(panelInfo[8,2], range = Float32.(0:0.05:1), startvalue = Float32(OBS_α[]))
      # Panel for configuration 
-     l_config = Label(panelInfo[8,1], "Configuration ",tellwidth = false,fontsize=24,halign=:left)
-     l_config_out = Label(panelInfo[8,2], "$(getDescription(VIDEO_CONFIG)[1])",tellwidth = false,fontsize=24,halign=:left)
+     l_config = Label(panelInfo[9,1], "Configuration ",tellwidth = false,fontsize=24,halign=:left)
+     l_config_out = Label(panelInfo[9,2], "$(getDescription(VIDEO_CONFIG)[1])",tellwidth = false,fontsize=24,halign=:left)
      # Panel for configuration 
      #l_config = Label(panelInfo[9,1], "Frame size (theo) ",tellwidth = false,fontsize=24,halign=:left)
      #l_config_th = Label(panelInfo[9,2], "$(getDescription(VIDEO_CONFIG)[2])",tellwidth = false,fontsize=24,halign=:left)
@@ -605,12 +608,31 @@ function start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;kw...)
         f_Hz = updateCarrierFreq!(csdr.sdr,f_Hz)
         # Get the value in MHz 
         f_MHz = HztoMHz(f_Hz)
-        # Update the observable 
-        OBS_Fs[] = f_Hz 
         # Update the box 
         boxFreq.displayed_string = string(f_MHz)
     end
     push!(list_cb,cb_box_freq)
+
+    """ Edit text of carrier frequency => Update SDR 
+    Note that we handle MHz and Hz 
+    """ 
+    cb_box_samp = on(boxSamp.stored_string) do freq
+        # Get the float in MHz 
+        f_MHz = parse(Float64, freq)
+        # Switch to Hz for SDR update 
+        f_Hz = MHztoHz(f_MHz) 
+        # Update the SDR 
+        # Need to get the actual RF freq
+        f_Hz = updateSamplingRate!(csdr.sdr,f_Hz)
+        # Get the value in MHz 
+        f_MHz = HztoMHz(f_Hz)
+        # Update the observable 
+        OBS_Fs[] = f_Hz 
+        # Update the box 
+        boxSamp.displayed_string = string(f_MHz)
+    end
+    push!(list_cb,cb_box_samp)
+
 
 
     tup = (;gui,csdr,task_producer,task_consummer,task_rendering,list_cb)
