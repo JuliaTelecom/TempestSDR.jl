@@ -35,7 +35,7 @@ VIDEO_CONFIG::VideoMode = VideoMode(1024,768,60)
 rates_refresh::Vector{Float32} = []
 Γ_refresh::Vector{Float32} = []
 # Channel for renderer 
-channelImage::Channel = Channel{Matrix{Float32}}(8) 
+channelImage::Channel = Channel{Matrix{Float32}}(2) 
 
 mutable struct GUI 
     fig::Any 
@@ -124,8 +124,9 @@ function coreProcessing(csdr::MultiThreadSDR)
     samplingRate_real = getSamplingRate(csdr.sdr)
     OBS_Fs[] = samplingRate_real
     #  Signal from radio 
-    sigId = zeros(ComplexF32, csdr.circ_buff.buffer.nEch)
-    sigAbs = zeros(Float32, csdr.circ_buff.buffer.nEch)
+    nEch = csdr.circ_buff.buffer.nEch
+    sigId = zeros(ComplexF32, nEch)
+    sigAbs = zeros(Float32, nEch)
     # ----------------------------------------------------
     # --- Image 
     # ---------------------------------------------------- 
@@ -138,6 +139,10 @@ function coreProcessing(csdr::MultiThreadSDR)
     @show y_t = VIDEO_CONFIG.height |> Int
     cnt = 0
     do_align = true 
+    # Record buffers 
+    nbBuffer = 10 # in second 
+    cntBuffer = 0 # Ident for file 
+    recordBuffer = zeros(ComplexF32, nbBuffer * length(sigId)) 
 
     tInit = time()
     try 
@@ -157,8 +162,8 @@ function coreProcessing(csdr::MultiThreadSDR)
                 # Receive samples from SDR
                 recv!(sigId,csdr)
                 sigAbs .= abs.(sigId)
-                for n in 1:nbIm - 4 
-                    theView = @views sigAbs[n*image_size_down .+ (1:image_size_down)]
+                for n in 1:nbIm 
+                    theView = @views sigAbs[(n-1)*image_size_down .+ (1:image_size_down)]
                     ##Getting an image from the current buffer 
                     image_mat .= (sig_to_image(theView,y_t,x_t) |> downgradeImage)
                     # Frame synchronisation  
@@ -172,6 +177,16 @@ function coreProcessing(csdr::MultiThreadSDR)
                     non_blocking_put!(imageOut)
                     cnt += 1
                 end
+            elseif OBS_Task[] == 3 
+                # Record signal 
+                for n ∈ 1 : nbBuffer 
+                    recv!(sigId,csdr)
+                    recordBuffer[((n-1)*nEch).+(1:nEch)] .= sigId 
+                end 
+                theName = "dumpIQ_$(cntBuffer).dat"
+                writeComplexBinary(recordBuffer,theName)
+                cntBuffer += 1
+                OBS_Task[] = 2
             else 
                  # Sleepy mode
                 sleep(0.1);
@@ -314,7 +329,7 @@ function start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;kw...)
     bttnCorr = Button(panelInfo[4,1], label = "Correlate !", fontsize=35,halign=:left,cornerradius=12)
     # Slider for Radio gain 
      l_gain = Label(panelInfo[5,1], "Radio Gain",tellwidth = false,fontsize=24,halign=:left)
-    sliderGain = Slider(panelInfo[5,2], range = 0:1:30, startvalue = 3)
+    sliderGain = Slider(panelInfo[5,2], range = 0:1:50, startvalue = 3)
     # SDR carrier frequency 
     l_freq = Label(panelInfo[6,1], "Carrier freq (MHz)",tellwidth = false,fontsize=24,halign=:left)
     boxFreq = Textbox(panelInfo[6,2], placeholder = "$(HztoMHz(carrierFreq))",validator = Float64, tellwidth = false,fontsize=24,halign=:left)
@@ -330,7 +345,8 @@ function start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;kw...)
      # Panel for configuration 
      #l_config = Label(panelInfo[9,1], "Frame size (theo) ",tellwidth = false,fontsize=24,halign=:left)
      #l_config_th = Label(panelInfo[9,2], "$(getDescription(VIDEO_CONFIG)[2])",tellwidth = false,fontsize=24,halign=:left)
-
+   # Panel to redo correlation
+    bttnRecord = Button(panelInfo[4,2], label = "Record !", fontsize=35,halign=:left,cornerradius=12,buttoncolor=RGBf(0.56, 0.71, 0.69))
 
     # Display the image 
     display(figure)
@@ -570,6 +586,13 @@ function start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;kw...)
     end
     push!(list_cb,cb_click_corr)
 
+
+    """ Click on record to record the signal 
+    """ 
+    cb_click_record = on(bttnRecord.clicks) do clk 
+        OBS_Task[] = 3 
+    end
+    push!(list_cb,cb_click_record)
 
     """ Click on Kill change the Observer 
     -> Kill is done 
