@@ -48,6 +48,11 @@ struct SyncXY{T}
 end
 
 
+# Depending on area // intermodulation in Tempest, blank between image can 
+# be 0 or 1 ==> black area should lead to findmin while white areas should lezak to findmax
+arg_area_blank =findmax 
+
+
 function vsync(image::AbstractMatrix{T},sync::SyncXY{T}) where T
     # ----------------------------------------------------
     # Vertical Sync 
@@ -58,7 +63,7 @@ function vsync(image::AbstractMatrix{T},sync::SyncXY{T}) where T
     c_v  = filt(sync.h,c_v)
     # Find y position 
     fill_β!(sync.β_x,c_v,sync.x_sync)
-    s_y = findmax(sync.β_y)[2][2]
+    s_y = arg_area_blank(sync.β_y)[2][2]
     # ----------------------------------------------------
     # Horizonal Sync 
     # ---------------------------------------------------- 
@@ -68,7 +73,7 @@ function vsync(image::AbstractMatrix{T},sync::SyncXY{T}) where T
     c_h  = filt(sync.h,c_h)       
     # Find x position 
     fill_β!(sync.β_y,c_h,sync.y_sync)
-    s_x = findmax(sync.β_x)[2][2]
+    s_x = arg_area_blank(sync.β_x)[2][2]
     # Output 
     return (s_y,s_x)
 end

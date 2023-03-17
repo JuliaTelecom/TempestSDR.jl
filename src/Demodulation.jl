@@ -26,3 +26,11 @@ end
 function amDemod(sig::Array{Complex{T}}) where T
     return abs.(sig)
 end
+
+
+function invert_amDemod(sig::Array{Complex{T}}) where T
+    dd =  abs.(sig)
+    dd .= dd ./ maximum(dd)
+    return (1 .- dd)
+end
+

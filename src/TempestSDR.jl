@@ -24,6 +24,7 @@ include("GetSpectrum.jl")
 # ---------------------------------------------------- 
 include("Demodulation.jl")
 export amDemod
+export invert_amDemod
 # ----------------------------------------------------
 # --- Resampling methods 
 # ---------------------------------------------------- 

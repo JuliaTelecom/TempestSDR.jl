@@ -100,7 +100,7 @@ function update_image_containers(theConfig::VideoMode,Fs::Float64)
 end
 
 
-function getImageDuration(theConfig::VideoMode,Fs::Float64)::Int64 
+function getImageDuration(theConfig::VideoMode,Fs::Number)::Int64 
     x_t = theConfig.width::Int    # Number of column
     y_t = theConfig.height::Int   # Number of lines 
     fv  = theConfig.refresh::Float64
@@ -161,7 +161,7 @@ function coreProcessing(csdr::MultiThreadSDR)
             if OBS_Task[] == 2 
                 # Receive samples from SDR
                 recv!(sigId,csdr)
-                sigAbs .= abs.(sigId)
+                sigAbs .= amDemod(sigId)
                 for n in 1:nbIm 
                     theView = @views sigAbs[(n-1)*image_size_down .+ (1:image_size_down)]
                     ##Getting an image from the current buffer 

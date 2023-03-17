@@ -49,7 +49,7 @@ function calculate_autocorrelation(x,Fs,minDelay,maxDelay,scale=:log)
 end
 
 
-""" Apply a zoom on the autocorrelation to see peaks between `rate_min`He and `rate_max` Hz
+""" Apply a zoom on the autocorrelation to see peaks between `rate_min`Hz and `rate_max` Hz
 """
 function zoom_autocorr(Γ,Fs;rate_min=20,rate_max=100)
 
