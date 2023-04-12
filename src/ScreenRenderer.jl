@@ -119,7 +119,7 @@ mutable struct MakieRendererScreen <: AbstractScreenRenderer
         # The information panel 
         axtop = Makie.Axis(g_P[1, 1])
         axbott = Makie.Axis(g_P[2:4, 1])
-        tb = Textbox(axtop.scene, placeholder = "yt ", validator = Int64, tellwidth = false)
+        #tb = Textbox(axtop.scene, placeholder = "yt ", validator = Int64, tellwidth = false)
 
         # Display the image 
         display(figure)

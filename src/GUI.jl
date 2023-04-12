@@ -636,7 +636,7 @@ function start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;kw...)
     end
     push!(list_cb,cb_box_freq)
 
-    """ Edit text of carrier frequency => Update SDR 
+    """ Edit text of sampling frequency => Update SDR 
     Note that we handle MHz and Hz 
     """ 
     cb_box_samp = on(boxSamp.stored_string) do freq
