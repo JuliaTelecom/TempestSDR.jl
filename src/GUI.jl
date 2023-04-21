@@ -669,11 +669,25 @@ function gui(;
         samplingRate = 20e6,
         gain         = 50, 
         acquisition  = 0.50,
+        bufferSize   = 2048,
         kw...
     ) 
     global FLAG_KILL
+    # If we use radiosim, we need a template file. If no file is given, we use the default file given in the project 
+    if sdr == :radiosim 
+        if haskey(kw,:buffer)
+            # The user gives a buffer to be played, nothing to be done 
+        else 
+            # We load the sample data 
+           buffer = readComplexBinary("./dumpIQ_0.dat",:single)
+           # Create new keywords to be add to SDR
+           ak =Pair(:buffer => buffer,:packetSize => 16384) 
+           # Add them to other keywords
+           kw = (;kw...,ak)
+       end
+    end
     # Start the runtime 
-    tup = start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;kw...)
+    tup = start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;bufferSize,kw...)
     @async begin 
         while(FLAG_KILL == false) 
             sleep(0.1) 
