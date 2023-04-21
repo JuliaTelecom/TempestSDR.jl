@@ -119,6 +119,10 @@ Note that you can add any specific keywords associated to the radio configuratio
         tup = gui(;sdr=:pluto,carrierFreq=764e6,samplingRate=20e6,gain=9,acquisition=0.05,addr="usb:1.0.5");
 
 
+You have to tune the carrier frequency to find a potential leakage. When choosing a carrier frequency, remain to important things  
+
+- Leakage appears at multiple  of screen clock (often multiple of 148,5MHz ) 
+- If you detect EM activities, the correlation should have variations. If you encounter many peaks, this is a good sign as it means that this EM  signature has patterns   
 
 ## Why TempestSDR in pure Julia ?
 
