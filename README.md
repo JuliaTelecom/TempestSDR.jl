@@ -1,6 +1,6 @@
 # TempestSDR.jl 
 
-![Tempest Logo](./docs/logo.png){ width=100% }
+![Tempest Logo](./docs/logo.png){ width=80% }
 
 
 This package proposes a Graphical User Interface (GUI) to perform real time screen eavesdrop.
@@ -69,7 +69,7 @@ The GUI can be launched with
         tup = gui(;sdr=:radiosim,carrierFreq=764e6,samplingRate=20e6,gain=9,acquisition=0.05);
         
 
-![Tempest Logo](./docs/screen_base.png){ width=100% }
+![Tempest Logo](./docs/screen_base.png){ width=60% }
 
 
 If you use `:radiosim` SDR backend without specifying the vector of the raw data, it will use by default the test samples provided by the project. It can render an image so it is perfect to learn how to configure the GUI ! 
@@ -86,7 +86,10 @@ By selecting the best configuration (peaks on the 2 correlation panels), the ass
 Tuning the low pass coefficient (the larger the smoother the image is) can also help to increase the image rendering.
 
 
-When you have a good image rendering, you can also store the raw IQ samples by clicking on the button record.
+When you have a good image rendering, you can also store the raw IQ samples by clicking on the button record. You can typically obtain a renderer image as this one 
+
+![Tempest Logo](./docs/screen_ok.png.png){ width=60% }
+
 
 If you use a real SDR and change the position of the antenna, you can force to recalculate the correlation by clicking on the `correlate` button. 
 
