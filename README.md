@@ -88,7 +88,7 @@ Tuning the low pass coefficient (the larger the smoother the image is) can also 
 
 When you have a good image rendering, you can also store the raw IQ samples by clicking on the button record. You can typically obtain a renderer image as this one 
 
-![Tempest Logo](./docs/screen_ok.png.png){ width=60% }
+![Tempest Logo](./docs/screen_ok.png){ width=60% }
 
 
 If you use a real SDR and change the position of the antenna, you can force to recalculate the correlation by clicking on the `correlate` button. 
