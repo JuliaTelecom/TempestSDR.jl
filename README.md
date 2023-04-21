@@ -91,6 +91,9 @@ When you have a good image rendering, you can also store the raw IQ samples by c
 ![Tempest Logo](./docs/screen_ok.png){ width=60% }
 
 
+In this configuration (this is with the default file), you have manage to capture a remote screen that works at 60.14Hz, with a screen configuration of 2048x1536. You can see the content of the screen and also letters that are very difficult to see.
+
+
 If you use a real SDR and change the position of the antenna, you can force to recalculate the correlation by clicking on the `correlate` button. 
 
 
