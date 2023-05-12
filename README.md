@@ -30,7 +30,7 @@ Screen are connected to devices by cables, often HDMI or VGA. This can lead to a
 
 A simple Video example ! 
 
-
+![](docs/IMG_4353.MOV)
 
 
 ## How it works 
