@@ -55,8 +55,8 @@ function zoom_autocorr(Γ,Fs;rate_min=20,rate_max=100)
 
     # Defining time grid for Γ 
     N = length(Γ)
-    @show pos_rate_min = min(Int( round( 1/rate_max * Fs)),N)
-    @show pos_rate_max = min(Int( round( 1/rate_min * Fs)),N)
+    pos_rate_min = min(Int( round( 1/rate_max * Fs)),N)
+    pos_rate_max = min(Int( round( 1/rate_min * Fs)),N)
 
     xAx = (pos_rate_min : pos_rate_max) ./ Fs
     xARate = 1 ./xAx

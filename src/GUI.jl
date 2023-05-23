@@ -35,7 +35,7 @@ VIDEO_CONFIG::VideoMode = VideoMode(1024,768,60)
 rates_refresh::Vector{Float32} = []
 Γ_refresh::Vector{Float32} = []
 # Channel for renderer 
-channelImage::Channel = Channel{Matrix{Float32}}(2) 
+channelImage::Channel = Channel{Matrix{Float32}}(16) 
 
 mutable struct GUI 
     fig::Any 
@@ -47,7 +47,7 @@ end
 # --- Methods 
 # ---------------------------------------------------- 
 function extract_configuration(csdr::AtomicAbstractSDR)
-    @info "Search screen configuration in given signal."
+    #@info "Search screen configuration in given signal."
     # ----------------------------------------------------
     # --- Get long signal to compute metrics 
     # ---------------------------------------------------- 
@@ -67,14 +67,9 @@ function extract_configuration(csdr::AtomicAbstractSDR)
     for n ∈ 1 : nbBuffer 
         # Getting buffer from radio 
         AtomicAbstractSDRs.recv!(_tmp,csdr)
-        w = (csdr.circ_buff.ptr_write.ptr)
-        r = (csdr.circ_buff.ptr_read.ptr)
-        @info "Atomic write $w \t Atomic read $r "
         sigCorr[ (n-1)*buffSize .+ (1:buffSize)] .= abs2.(_tmp)
     end
-    @info "Calculate the correlation"
     # Calculate the autocorrelation for this buffer 
-    @show nbBuffer, buffSize, length(sigCorr)
     (Γ,τ) = calculate_autocorrelation(sigCorr,Fs,0,delayRate)
     rates_refresh,Γ_refresh = zoom_autocorr(Γ,Fs;rate_min=50,rate_max=90)
     # ----------------------------------------------------
@@ -84,8 +79,8 @@ function extract_configuration(csdr::AtomicAbstractSDR)
     (valMax,posMax) = findmax(Γ_refresh)
     posMax_time = 1/rates_refresh[posMax]
     fv = 1/posMax_time
-    fvR = round(fv;digits=2)
-    @info "Selected refresh rate is $fvR"
+    #fvR = round(fv;digits=2)
+    #@info "Selected refresh rate is $fvR"
     # ----------------------------------------------------
     # --- Prepare output
     # ---------------------------------------------------- 
@@ -139,9 +134,9 @@ function coreProcessing(csdr::AtomicAbstractSDR)
     image_mat = zeros(Float32,RENDERING_SIZE...)
     imageOut  = zeros(Float32,RENDERING_SIZE...)
     sync = SyncXY(image_mat)
-    @show nbIm = length(csdr.buffer) ÷ image_size_down   # Number of image at SDR rate 
-    @show x_t = VIDEO_CONFIG.width |> Int 
-    @show y_t = VIDEO_CONFIG.height |> Int
+    nbIm = length(csdr.buffer) ÷ image_size_down   # Number of image at SDR rate 
+    x_t = VIDEO_CONFIG.width |> Int 
+    y_t = VIDEO_CONFIG.height |> Int
     cnt = 0
     do_align = true 
     # Record buffers 
@@ -157,7 +152,6 @@ function coreProcessing(csdr::AtomicAbstractSDR)
                 image_size_down = getImageDuration(VIDEO_CONFIG,samplingRate_real)
                 nbIm = length(csdr.buffer) ÷ image_size_down   # Number of image at SDR rate 
                 FLAG_CONFIG_UPDATE[] = false 
-                @show VIDEO_CONFIG
                 x_t = VIDEO_CONFIG.width
                 y_t = VIDEO_CONFIG.height
             end
@@ -425,7 +419,6 @@ function start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;kw...)
             # ----------------------------------------------------
             # --- Image processing task 
             # ---------------------------------------------------- 
-            @info "Processing NOW !!!"
         end
     end
     push!(list_cb,cb_task)
@@ -457,7 +450,7 @@ function start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;kw...)
             if is_mouseinside(gui.fig.content[2].scene)
                 select_f,_ = mouseposition(gui.fig.content[2].scene)
                 # Update configuration
-                @show OBS_fv[] = select_f
+                OBS_fv[] = select_f
             end
         end
     end
@@ -500,7 +493,7 @@ function start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;kw...)
         posFv = argmin(abs.(rates_refresh[1:end-N] .- fv)) # Get the position of the selection, from which the zoom is performed
         Γ_yt = Γ_refresh[posFv .+ (1:N)]
         rates_yt = range(0,step=1/OBS_Fs[],length=N)
-        @show τ_y_t = yt2delay(OBS_yt[],fv) # Delay in s associated to yt
+        τ_y_t = yt2delay(OBS_yt[],fv) # Delay in s associated to yt
        # Redraw the correlation 
         delete!(gui.fig.content[3],gui.fig.content[3].scene[3])
         lines!(gui.fig.content[3],rates_yt,Γ_yt,color=:turquoise4)
