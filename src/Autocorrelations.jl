@@ -4,25 +4,13 @@ module Autocorrelations
 # --- Dependencies 
 # ---------------------------------------------------- 
 using FFTW 
-using Makie, GLMakie 
 
 # ----------------------------------------------------
 # --- Exportations 
 # ---------------------------------------------------- 
 export calculate_autocorrelation
 export zoom_autocorr
-#export InteractiveCorrelation
-#export interactive_correlation
-
-
-#mutable struct  InteractiveCorrelation 
-    #fig::Any 
-    #ax::Any 
-    #p::Any 
-    #t::Any 
-    #vF::Any 
-#end
-    
+   
 
 
 # ----------------------------------------------------

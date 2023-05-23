@@ -1,6 +1,7 @@
 module DatBinaryFiles
 # The module helps to manage the .dat file, binary files that are linked to SDR acquisition and load.
 # It mainly export readComplexBinary and writeComplexBinary to read a binaruy file and write an array in a binary file
+# It is compatible with Gnuradio file source and file sink
 
 # ----------------------------------------------------
 # --- Exportation 
