@@ -46,23 +46,27 @@ end
 # ----------------------------------------------------
 # --- Methods 
 # ---------------------------------------------------- 
-function extract_configuration(csdr::MultiThreadSDR)
+function extract_configuration(csdr::AtomicAbstractSDR)
     @info "Search screen configuration in given signal."
     # ----------------------------------------------------
     # --- Get long signal to compute metrics 
     # ---------------------------------------------------- 
     # --- Core parameters for the SDR 
     Fs = getSamplingRate(csdr.sdr)
-    # --- Number of buffers used for configuration calculation 
-    nbBuffer = 12
+    delayRate = 1/10 
     # Instantiate a long buffer to get all the data from the SDR 
     buffSize = length(csdr.buffer)
+    # --- Number of buffers used for configuration calculation 
+    indexMax = round( delayRate * Fs) |> Int # This is the number of symbols of the correlation we need 
+    # Deduce number of buffer we need 
+    nbBuffer = 1 + indexMax ÷ buffSize
+    # Pre instantiation 
     sigCorr  = zeros(Float32, nbBuffer * buffSize) 
     _tmp    = zeros(ComplexF32, buffSize)
     # Fill this buffer 
     for n ∈ 1 : nbBuffer 
         # Getting buffer from radio 
-        ThreadSDRs.recv!(_tmp,csdr)
+        AtomicAbstractSDRs.recv!(_tmp,csdr)
         w = (csdr.circ_buff.ptr_write.ptr)
         r = (csdr.circ_buff.ptr_read.ptr)
         @info "Atomic write $w \t Atomic read $r "
@@ -70,7 +74,8 @@ function extract_configuration(csdr::MultiThreadSDR)
     end
     @info "Calculate the correlation"
     # Calculate the autocorrelation for this buffer 
-    (Γ,τ) = calculate_autocorrelation(sigCorr,Fs,0,1/10)
+    @show nbBuffer, buffSize, length(sigCorr)
+    (Γ,τ) = calculate_autocorrelation(sigCorr,Fs,0,delayRate)
     rates_refresh,Γ_refresh = zoom_autocorr(Γ,Fs;rate_min=50,rate_max=90)
     # ----------------------------------------------------
     # --- Get the screen rate 
@@ -117,7 +122,7 @@ end
     put!(channelImage,image)
 end 
 
-function coreProcessing(csdr::MultiThreadSDR)
+function coreProcessing(csdr::AtomicAbstractSDR)
     # 
     global RENDERING_SIZE 
     #
@@ -134,7 +139,7 @@ function coreProcessing(csdr::MultiThreadSDR)
     image_mat = zeros(Float32,RENDERING_SIZE...)
     imageOut  = zeros(Float32,RENDERING_SIZE...)
     sync = SyncXY(image_mat)
-    nbIm = length(csdr.buffer) ÷ image_size_down   # Number of image at SDR rate 
+    @show nbIm = length(csdr.buffer) ÷ image_size_down   # Number of image at SDR rate 
     @show x_t = VIDEO_CONFIG.width |> Int 
     @show y_t = VIDEO_CONFIG.height |> Int
     cnt = 0
@@ -188,12 +193,13 @@ function coreProcessing(csdr::MultiThreadSDR)
                 cntBuffer += 1
                 OBS_Task[] = 2
             else 
-                 # Sleepy mode
+                # Sleepy mode
                 sleep(0.1);
                 yield()
             end
         end
     catch exception 
+        #display(exception)
         #rethrow(exception)
     end
     tFinal = time() - tInit 
@@ -368,14 +374,14 @@ function start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;kw...)
          sigRx = zeros(ComplexF32,nbS)
      end 
      # Radio 
-     csdr = open_thread_sdr(sdr,carrierFreq,samplingRate,gain;bufferSize=nbS,buffer=sigRx,packetSize=nbS,kw...)
+     csdr = openAtomicSDR(sdr,carrierFreq,samplingRate,gain;bufferSize=nbS,buffer=sigRx,packetSize=nbS,kw...)
 
    
 
     # ----------------------------------------------------
     # --- Launch threads 
     # ---------------------------------------------------- 
-    task_producer   = Threads.@spawn start_thread_sdr(csdr)
+    task_producer   = Threads.@spawn start_atomic_sdr(csdr)
     task_consummer  = Threads.@spawn coreProcessing(csdr)
     task_rendering  = @async image_rendering(gui)
 
@@ -669,7 +675,6 @@ function gui(;
         samplingRate = 20e6,
         gain         = 50, 
         acquisition  = 0.50,
-        bufferSize   = 2048,
         kw...
     ) 
     global FLAG_KILL
@@ -687,7 +692,7 @@ function gui(;
        end
     end
     # Start the runtime 
-    tup = start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;bufferSize,kw...)
+    tup = start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;kw...)
     @async begin 
         while(FLAG_KILL == false) 
             sleep(0.1) 
@@ -710,7 +715,8 @@ function stop_runtime(tup)
     @info "Stopping all threads"
     OBS_Task[] = 0
     # SDR safe stop 
-    @async Base.throwto(tup.task_producer,InterruptException())
+    stop_atomic_sdr(tup.csdr)
+    #@async Base.throwto(tup.task_producer,InterruptException())
     fetch(tup.task_producer)
     #sleep(1)
     # Task stop 

@@ -44,7 +44,7 @@ function start_runtime(device=:radiosim,renderer=:makie)
     # --- Start radio thread for IQ recv
     print(runtime.csdr.sdr)
     Fs = getSamplingRate(runtime.csdr.sdr)
-    task_producer = Threads.@spawn start_thread_sdr(runtime.csdr)
+    task_producer = Threads.@spawn start_atomic_sdr(runtime.csdr)
 
 
     # ----------------------------------------------------

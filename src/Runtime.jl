@@ -28,7 +28,7 @@ using Makie, GLMakie
 end 
 
 #mutable struct TempestSDRRuntime
-    #csdr::MultiThreadSDR
+    #csdr::AtomicAbstractSDR
 #end
 
 """ Create the virtual or real SDR for data transmission. The SDR uses AbstractSDRs API and is set to be launched in a dedicated thread 
@@ -36,7 +36,7 @@ end
 function init_tempestSDR_runtime(args...;bufferSize=1024,kw...)
     global CONFIG, SAMPLING_RATE
     # --- Configure the SDR remotely
-    csdr = open_thread_sdr(args...;kw...,bufferSize)
+    csdr = openAtomicSDR(args...;kw...,bufferSize)
     # --- Configure the Video 
     return csdr
 end
@@ -46,7 +46,7 @@ end
 
 """" Calculate the a priori configuration of the received iage and returns a Video configuration 
 """ 
-function extract_configuration(runtime::MultiThreadSDR)
+function extract_configuration(runtime::AtomicAbstractSDR)
     global CONFIG, FLAG_HEATMAP, SAMPLING_RATE
     @info "Search screen configuration in given signal."
     # ----------------------------------------------------
@@ -63,7 +63,7 @@ function extract_configuration(runtime::MultiThreadSDR)
     # Fill this buffer 
     for n ∈ 1 : nbBuffer 
         # Getting buffer from radio 
-        ThreadSDRs.recv!(_tmp,runtime.csdr)
+        AtomicAbstractSDRs.recv!(_tmp,runtime.csdr)
         w = (runtime.csdr.circ_buff.ptr_write.ptr)
         r = (runtime.csdr.circ_buff.ptr_read.ptr)
         @info "Atomic write $w \t Atomic read $r "
@@ -229,7 +229,7 @@ function update_image_containers(theConfig::VideoMode,Fs)
 
 end
 
-function coreProcessing(runtime::MultiThreadSDR)     # Extract configuration 
+function coreProcessing(runtime::AtomicAbstractSDR)     # Extract configuration 
     global CONFIG, FLAG_CONFIG_UPDATE, SAMPLING_RATE, channelImage
     # ----------------------------------------------------
     # --- Overall parameters 

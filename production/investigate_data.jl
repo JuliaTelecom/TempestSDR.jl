@@ -25,7 +25,8 @@ Fs::Float64 = BANDWIDTH * 1e6
 try IS_LOADED == true
 catch exception 
     #local completePath = "$(pwd())/$DATA_PATH/testX310.dat"
-    local completePath = "/Users/Robin/data_tempest/testX310.dat"
+    #local completePath = "/Users/Robin/data_tempest/testX310.dat"
+    local completePath = "/Users/robin/Documents/Travail/ENSSAT/Cours/3A_SysNum/3A_Hardware_Security/Lab_Tempest/Correction/dumpIQ_0.dat"
     global sigRx = readComplexBinary(completePath,:single)
     #global sigId = sigRx
     global IS_LOADED = true 
@@ -187,7 +188,7 @@ function toImageGood(sigId,offset,Fs,finalConfig)
     return anImage 
 end
 
-anImage = toImage(sigId,4_200_000,Fs,finalConfig)
+anImage = toImage(sigId,4_200_00,Fs,finalConfig)
 
 # ----------------------------------------------------
 # --- Frame sync
@@ -196,12 +197,11 @@ sync = SyncXY(anImage)
 tup = vsync(anImage,sync)
 #terminal_with_sync(anImage,tup[2][2],tup[1][2])
 
-
 τ = tup[2] * finalConfig.width + tup[1]
 idx = Int(floor(τ / (finalConfig.width * finalConfig.height)  / fv * Fs))
 
 image_baseband_size = Int(round(Fs/finalConfig.refresh))
-anImage = toImage(sigId,4_200_000 +idx, Fs,finalConfig)
-anImage3 = toImage(sigId,4_200_000 +idx, Fs,finalConfig)
-anImage2 = sig_to_image(sigId[4_200_000+idx.+(1:image_baseband_size)],finalConfig.height,finalConfig.width)
+anImage = toImage(sigId,4_200_00 +idx, Fs,finalConfig)
+anImage3 = toImage(sigId,4_200_00 +idx, Fs,finalConfig)
+anImage2 = sig_to_image(sigId[4_200_00+idx.+(1:image_baseband_size)],finalConfig.height,finalConfig.width)
 #terminal(anImage)
