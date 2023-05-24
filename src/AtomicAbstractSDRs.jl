@@ -270,7 +270,7 @@ end
 
 """ Open a remote SDR system. It consists with an SDR on a specific Core (with no others processing tasks and a circular buffer managment on the processing core 
 """
-function openAtomicSDR(args...;bufferSize=1024,circular_depth=3,kw...)
+function openAtomicSDR(args...;bufferSize=1024,circular_depth=16,kw...)
     sdr = openSDR(args...;kw...) 
     buffer  = zeros(ComplexF32,bufferSize)
     circ_buff = AtomicCircularBuffer{ComplexF32}(bufferSize,circular_depth)
