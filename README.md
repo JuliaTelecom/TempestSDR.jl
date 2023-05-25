@@ -28,7 +28,7 @@ SDR are a precious tool for passive eavesdrop. By listening to the electromagnet
 
 Screen are connected to devices by cables, often HDMI or VGA. This can lead to an unwanted emission of the image signal through electromagnetic wave. A passive listener can retrieve the image signal without be in the same room of the targeted PC !    
 
-A simple Video example ! 
+A simple Video example done without any modification of the eavesdropped PC! 
 
 ![](https://github.com/JuliaTelecom/TempestSDR.jl/assets/45641052/bcc598e9-a9f4-496c-b54e-30f5e6dbd74e)
 
