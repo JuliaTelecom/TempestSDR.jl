@@ -33,4 +33,4 @@ A simple Video example done without any modification of the eavesdropped PC!
 
 ## Greetings 
 
-This work is funded by DGA and Brittany region under the Creach Lab founding and by the French National Research Agency (ANR) under the grant number ANR-22-CE25-0007-01 (RedInBlack project).
+This work is funded by DGA and Brittany region under the Creach Lab founding and by the French National Research Agency (ANR) under the grant number ANR-22-CE25-0007-01 ([RedInBlack project](https://files.inria.fr/redinblack/).
