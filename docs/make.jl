@@ -7,7 +7,7 @@ makedocs(sitename="TempestSDR.jl",
                         "Screen eavesdropping context"    => "context.md",
                         "Installation and basic usage"    => "install.md",
                         "GUI explanation"                 => "gui.md",
-                        "Using real SDR"                  => "sdr.md",
+                        "Using a real SDR"                => "sdr.md",
                         "Precompilation notes"            => "precompilation.md",
                         ],
          );

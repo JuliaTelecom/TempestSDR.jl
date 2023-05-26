@@ -2,7 +2,7 @@
 
 ## Introduction 
 
-<img src="./docs/logo.png" width="75%" height="75%">
+<img src="logo.png" width="75%" height="75%">
 
 This package proposes a Graphical User Interface (GUI) to perform real time screen eavesdrop.
 
