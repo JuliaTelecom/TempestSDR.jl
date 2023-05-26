@@ -1,5 +1,4 @@
-push!(LOAD_PATH, "../")
-using Documenter, TempestSDR
+using Documenter
 
 makedocs(sitename="TempestSDR.jl", 
          format = Documenter.HTML(),
