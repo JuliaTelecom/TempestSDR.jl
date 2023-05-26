@@ -2,7 +2,7 @@
 
 ## Introduction 
 
-<img src="logo.png" width="75%" height="75%">
+![Tempest Logo](./assets/logo.png)
 
 This package proposes a Graphical User Interface (GUI) to perform real time screen eavesdrop.
 
