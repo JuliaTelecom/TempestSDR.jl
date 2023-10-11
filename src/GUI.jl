@@ -141,7 +141,7 @@ function coreProcessing(csdr::AtomicAbstractSDR)
     do_align = true 
     # Record buffers 
     nbBuffer = 10 # in second 
-    cntBuffer = 0 # Ident for file 
+    cntBuffer = 1 # Ident for file 
     recordBuffer = zeros(ComplexF32, nbBuffer * length(sigId)) 
 
     tInit = time()
@@ -686,7 +686,7 @@ function gui(;
     end
     # Start the runtime 
     tup = start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;kw...)
-    @async begin 
+    begin 
         while(FLAG_KILL == false) 
             sleep(0.1) 
             yield() 

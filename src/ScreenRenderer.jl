@@ -5,9 +5,7 @@ module ScreenRenderer
 # --- Dependencies 
 # ---------------------------------------------------- 
 import Base:close 
-using ImageInTerminal
-using Images, ImageView
-using Gtk
+using Images
 using Makie,GLMakie
 
 # ----------------------------------------------------
@@ -38,51 +36,51 @@ function fullScale!(mat)
     return (mat .- mmin) / (mmax  - mmin)
 end
 
-# ----------------------------------------------------
-# --- Terminal Renderer
-# ---------------------------------------------------- 
-# Structure 
-struct TerminalRendererScreen <: AbstractScreenRenderer
-end 
-# Display 
-""" Display the extracted image in the terminal 
-"""
-function displayScreen!(p::TerminalRendererScreen,img)
-    println("\33[H")
-    image = fullScale!(img)
-    display(colorview(Gray,image))
-    return nothing
-end
-# Close
-function close(p::TerminalRendererScreen)
-end
+## ----------------------------------------------------
+## --- Terminal Renderer
+## ---------------------------------------------------- 
+## Structure 
+#struct TerminalRendererScreen <: AbstractScreenRenderer
+#end 
+## Display 
+#""" Display the extracted image in the terminal 
+#"""
+#function displayScreen!(p::TerminalRendererScreen,img)
+    #println("\33[H")
+    #image = fullScale!(img)
+    #display(colorview(Gray,image))
+    #return nothing
+#end
+## Close
+#function close(p::TerminalRendererScreen)
+#end
 
 # ----------------------------------------------------
 # --- Gtk renderer 
 # ---------------------------------------------------- 
 # Structure 
-struct GtkRendererScreen <: AbstractScreenRenderer 
-    p::AbstractDict
-    function GtkRendererScreen(height,width)
-        mat = zeros(height,width)
-        fullScale!(mat)
-        guidict = ImageView.imshow(mat)
-        new(guidict)
-    end
-end 
-# Renderer 
-function displayScreen!(p::GtkRendererScreen,img)
-    canvas = p.p["gui"]["canvas"] 
-    img2 = fullScale!(img)
-    imshow(canvas,img2)
-    sleep(0.1) 
-    yield()
-    return nothing
-end 
-# Close 
-function close(p::GtkRendererScreen)
-    ImageView.closeall()
-end
+#struct GtkRendererScreen <: AbstractScreenRenderer 
+    #p::AbstractDict
+    #function GtkRendererScreen(height,width)
+        #mat = zeros(height,width)
+        #fullScale!(mat)
+        #guidict = ImageView.imshow(mat)
+        #new(guidict)
+    #end
+#end 
+## Renderer 
+#function displayScreen!(p::GtkRendererScreen,img)
+    #canvas = p.p["gui"]["canvas"] 
+    #img2 = fullScale!(img)
+    #imshow(canvas,img2)
+    #sleep(0.1) 
+    #yield()
+    #return nothing
+#end 
+## Close 
+#function close(p::GtkRendererScreen)
+    #ImageView.closeall()
+#end
 
 
 
@@ -164,15 +162,15 @@ end
 """ Create the GUI and export the canvas that will be updated 
 """
 function initScreenRenderer(renderer::Symbol,nbLines,nbColumn)::AbstractScreenRenderer
-    if renderer == :terminal
-        return TerminalRendererScreen()
-    elseif renderer == :gtk 
-        return GtkRendererScreen(nbLines,nbColumn)
-    elseif renderer == :makie 
+    #if renderer == :terminal
+        #return TerminalRendererScreen()
+    #elseif renderer == :gtk 
+        #return GtkRendererScreen(nbLines,nbColumn)
+    #elseif renderer == :makie 
         return MakieRendererScreen(nbLines,nbColumn)
-    else 
-        @error "Unable to init screen renderer: $renderer is an unknown backend"
-    end
+    #else 
+        #@error "Unable to init screen renderer: $renderer is an unknown backend"
+    #end
 end
 
 """ Display the extracted image in the terminal. It also print in white the vertical lines and horizontal lines obtained with vsync.

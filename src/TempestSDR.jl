@@ -57,4 +57,25 @@ include("GUI.jl")
 export gui
 export start_runtime
 export stop_runtime
+
+
+
+
+""" This is a sandbox function to generate an app 
+""" 
+function julia_main()::Cint 
+    include("config.jl")
+    # This should import all we need 
+    tup = gui(;
+	  sdr,
+	  carrierFreq,
+	  samplingRate,
+	  gain,
+	  acquisition,
+	  kw...
+	  )
+    return 0
+end
+
+
 end
