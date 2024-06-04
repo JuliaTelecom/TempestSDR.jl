@@ -9,6 +9,35 @@ Callback = Observables.ObserverFunction
 # The final image size 
 const RENDERING_SIZE = (600,800)
 
+## Observable linked to number of lines  
+#OBS_yt   = Observable{Int}(1530)
+#OBS_box_yt   = Observable{Int}(1530)
+## Observable for refresh 
+#OBS_fv   = Observable{Float64}(60.0)
+#OBS_box_fv   = Observable{Float64}(60.0)
+## Observable for sampling frequency
+#OBS_Fs   = Observable{Float64}(20e6)
+## Observable for image LPF 
+#OBS_α    = Observable{Float32}(0.1)
+## Observable on what we do 
+#OBS_Task = Observable{Int}(0)
+## Observable on new correlations 
+#OBS_Corr = Observable{Bool}(false)
+#OBS_Corr_yt = Observable{Bool}(false)
+## Start // Stop 
+#OBS_running = Observable{Bool}(false)
+## Flags 
+#FLAG_CONFIG_UPDATE  = Observable{Bool}(false)
+#FLAG_KILL::Bool = false
+## Video Config
+#VIDEO_CONFIG::VideoMode = VideoMode(1024,768,60) 
+## Correlations 
+#rates_refresh::Vector{Float32} = []
+#Γ_refresh::Vector{Float32} = []
+## Channel for renderer 
+#channelImage::Channel = Channel{Matrix{Float32}}(16) 
+
+
 # Observable linked to number of lines  
 OBS_yt   = Observable{Int}(1530)
 OBS_box_yt   = Observable{Int}(1530)
@@ -28,14 +57,17 @@ OBS_Corr_yt = Observable{Bool}(false)
 OBS_running = Observable{Bool}(false)
 # Flags 
 FLAG_CONFIG_UPDATE  = Observable{Bool}(false)
-FLAG_KILL::Bool = false
+FLAG_KILL = false
 # Video Config
-VIDEO_CONFIG::VideoMode = VideoMode(1024,768,60) 
+VIDEO_CONFIG = VideoMode(1024,768,60) 
 # Correlations 
-rates_refresh::Vector{Float32} = []
-Γ_refresh::Vector{Float32} = []
+rates_refresh = []
+Γ_refresh = []
 # Channel for renderer 
-channelImage::Channel = Channel{Matrix{Float32}}(16) 
+channelImage = Channel{Matrix{Float32}}(16) 
+
+
+
 
 mutable struct GUI 
     fig::Any 
@@ -193,8 +225,8 @@ function coreProcessing(csdr::AtomicAbstractSDR)
             end
         end
     catch exception 
-        #display(exception)
-        #rethrow(exception)
+        display(exception)
+        rethrow(exception)
     end
     tFinal = time() - tInit 
     rate = round(cnt / tFinal;digits=2)
@@ -431,7 +463,10 @@ function start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;kw...)
     cb_corr = on(OBS_Corr) do cc 
         # Redraw the correlation 
         delete!(gui.fig.content[2],gui.fig.content[2].scene[3])
-        lines!(gui.fig.content[2],rates_refresh,Γ_refresh,color=:gold)
+        try 
+            lines!(gui.fig.content[2],rates_refresh,Γ_refresh,color=:gold)
+        catch 
+        end
         # Put the lines at proper location and update the text
         gui.fig.content[2].scene[2][1] = OBS_fv[]
         #
@@ -496,7 +531,10 @@ function start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;kw...)
         τ_y_t = yt2delay(OBS_yt[],fv) # Delay in s associated to yt
        # Redraw the correlation 
         delete!(gui.fig.content[3],gui.fig.content[3].scene[3])
-        lines!(gui.fig.content[3],rates_yt,Γ_yt,color=:turquoise4)
+        try 
+            lines!(gui.fig.content[3],rates_yt,Γ_yt,color=:turquoise4)
+        catch 
+        end
         # Put the lines at proper location and update the text
         gui.fig.content[3].scene[2][1] = τ_y_t
         #
