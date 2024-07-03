@@ -362,7 +362,7 @@ function start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;kw...)
      nbS = Int(round(acquisition * samplingRate))
      if sdr == :radiosim 
          @info "Loading data"
-         local completePath = "/Users/Robin/data_tempest/testX310.dat"
+         local completePath = "./dumpIQ_0.dat"
          sigRx = readComplexBinary(completePath,:single)
      else 
          sigRx = zeros(ComplexF32,nbS)
