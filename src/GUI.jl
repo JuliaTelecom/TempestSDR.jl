@@ -324,7 +324,7 @@ function start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;kw...)
     # --- Create GUI 
     # ---------------------------------------------------- 
      # --- Define the Grid Layout 
-     figure = Figure(backgroundcolor=:lightgrey,resolution=(1800,1200))
+     figure = Figure(backgroundcolor=:lightgrey,resolution=(800,600))
      panelImage = figure[1:2, 1:3] = GridLayout()
      panelRefresh = figure[3, 1:4] = GridLayout()
      panelYt = figure[4, 1:4] = GridLayout()
@@ -344,44 +344,44 @@ function start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;kw...)
      axZ = Makie.Axis(panelYt[1,1])
      ScreenRenderer._plotInteractiveCorrelation(axZ,delay,corr,0.0,:gold4)
      # Run mode 
-     btnStart = Button(panelInfo[1,1], label = "START", fontsize=35,halign=:center,tellwidth=false,tellheight=true,cornerradius=12,buttoncolor=RGBf(0.67, 0.91, 0.77))
+     btnStart = Button(panelInfo[1,1], label = "START", fontsize=16,halign=:center,tellwidth=false,tellheight=true,cornerradius=12,buttoncolor=RGBf(0.67, 0.91, 0.77))
     # Panel to Exit
-    bttnKill = Button(panelInfo[1,2], label = "Exit", fontsize=40,halign=:center,tellwidth=true,tellheight=false,cornerradius=12,buttoncolor=RGBf(0.96, 0.71, 0.69))
+    bttnKill = Button(panelInfo[1,2], label = "Exit", fontsize=20,halign=:center,tellwidth=true,tellheight=false,cornerradius=12,buttoncolor=RGBf(0.96, 0.71, 0.69))
      # Refresh panel 
-     l_fv = Label(panelInfo[2,1], "Refresh Rate",tellwidth = false,fontsize=24,halign=:left)
-     boxRefresh = Textbox(panelInfo[2,2], placeholder = "Refresh Rate",validator = Float64, tellwidth = false,fontsize=24,halign=:left)
+     l_fv = Label(panelInfo[2,1], "Refresh Rate",tellwidth = false,fontsize=12,halign=:left)
+     boxRefresh = Textbox(panelInfo[2,2], placeholder = "Refresh Rate",validator = Float64, tellwidth = false,fontsize=12,halign=:left)
      # Panel for yt 
-     l_yt = Label(panelInfo[3,1], "Height size",tellwidth = false,fontsize=24,halign=:left)
-     boxYt = Textbox(panelInfo[3,2], placeholder = "$(OBS_yt[])",validator = Int64, tellwidth = false,fontsize=24,halign=:left)
+     l_yt = Label(panelInfo[3,1], "Height size",tellwidth = false,fontsize=12,halign=:left)
+     boxYt = Textbox(panelInfo[3,2], placeholder = "$(OBS_yt[])",validator = Int64, tellwidth = false,fontsize=12,halign=:left)
     panelInfo[3, 3] = buttongrid = GridLayout(tellwidth = false,halign=:left)
-    btnYt_plus = Button(buttongrid[1,1], label = "+", tellwidth = false,fontsize=24,halign=:left,width=20)
-    btnYt_minus = Button(buttongrid[2,1], label = "-", tellwidth = false,fontsize=24,halign=:left,width=20)
+    btnYt_plus = Button(buttongrid[1,1], label = "+", tellwidth = false,fontsize=12,halign=:left,width=20)
+    btnYt_minus = Button(buttongrid[2,1], label = "-", tellwidth = false,fontsize=12,halign=:left,width=20)
     rowgap!(buttongrid,0.15)
     # Panel to redo correlation
-    bttnCorr = Button(panelInfo[4,1], label = "Correlate !", fontsize=35,halign=:left,cornerradius=12)
+    bttnCorr = Button(panelInfo[4,1], label = "Correlate !", fontsize=16,halign=:left,cornerradius=12)
     # Slider for Radio gain 
-     l_gain = Label(panelInfo[5,1], "Radio Gain",tellwidth = false,fontsize=24,halign=:left)
+     l_gain = Label(panelInfo[5,1], "Radio Gain",tellwidth = false,fontsize=12,halign=:left)
     sliderGain = Slider(panelInfo[5,2], range = 0:1:50, startvalue = 3)
     # SDR carrier frequency 
-    l_freq = Label(panelInfo[6,1], "Carrier freq (MHz)",tellwidth = false,fontsize=24,halign=:left)
-    boxFreq = Textbox(panelInfo[6,2], placeholder = "$(HztoMHz(carrierFreq))",validator = Float64, tellwidth = false,fontsize=24,halign=:left)
+    l_freq = Label(panelInfo[6,1], "Carrier freq (MHz)",tellwidth = false,fontsize=12,halign=:left)
+    boxFreq = Textbox(panelInfo[6,2], placeholder = "$(HztoMHz(carrierFreq))",validator = Float64, tellwidth = false,fontsize=12,halign=:left)
     # SDR carrier frequency 
-    l_samp = Label(panelInfo[7,1], "Sample Rate (MHz)",tellwidth = false,fontsize=24,halign=:left)
-    boxSamp = Textbox(panelInfo[7,2], placeholder = "$(HztoMHz(samplingRate))",validator = Float64, tellwidth = false,fontsize=24,halign=:left)
+    l_samp = Label(panelInfo[7,1], "Sample Rate (MHz)",tellwidth = false,fontsize=12,halign=:left)
+    boxSamp = Textbox(panelInfo[7,2], placeholder = "$(HztoMHz(samplingRate))",validator = Float64, tellwidth = false,fontsize=12,halign=:left)
     # LPF coefficient 
-     l_filt = Label(panelInfo[8,1], "Low pass filter",tellwidth = false,fontsize=24,halign=:left)
+     l_filt = Label(panelInfo[8,1], "Low pass filter",tellwidth = false,fontsize=12,halign=:left)
      sliderLPF = Slider(panelInfo[8,2], range = Float32.(0:0.05:1), startvalue = Float32(OBS_α[]))
      # Panel for configuration 
-     l_config = Label(panelInfo[9,1], "Configuration ",tellwidth = false,fontsize=24,halign=:left)
-     l_config_out = Label(panelInfo[9,2], "$(getDescription(VIDEO_CONFIG)[1])",tellwidth = false,fontsize=24,halign=:left)
+     l_config = Label(panelInfo[9,1], "Configuration ",tellwidth = false,fontsize=12,halign=:left)
+     l_config_out = Label(panelInfo[9,2], "$(getDescription(VIDEO_CONFIG)[1])",tellwidth = false,fontsize=12,halign=:left)
      # Panel for configuration 
-     #l_config = Label(panelInfo[9,1], "Frame size (theo) ",tellwidth = false,fontsize=24,halign=:left)
-     #l_config_th = Label(panelInfo[9,2], "$(getDescription(VIDEO_CONFIG)[2])",tellwidth = false,fontsize=24,halign=:left)
+     #l_config = Label(panelInfo[9,1], "Frame size (theo) ",tellwidth = false,fontsize=12,halign=:left)
+     #l_config_th = Label(panelInfo[9,2], "$(getDescription(VIDEO_CONFIG)[2])",tellwidth = false,fontsize=12,halign=:left)
    # Panel to redo correlation
-    bttnRecord = Button(panelInfo[4,2], label = "Record !", fontsize=35,halign=:left,cornerradius=12,buttoncolor=RGBf(0.56, 0.71, 0.69))
+    bttnRecord = Button(panelInfo[4,2], label = "Record !", fontsize=16,halign=:left,cornerradius=12,buttoncolor=RGBf(0.56, 0.71, 0.69))
 
     # Display the image 
-    display(figure)
+    display(figure,scaling_factor=4)
     # Create objet 
     gui = GUI(figure,plot_obj)
 
@@ -394,7 +394,7 @@ function start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;kw...)
      nbS = Int(round(acquisition * samplingRate))
      if sdr == :radiosim 
          @info "Loading data"
-         local completePath = "/Users/Robin/data_tempest/testX310.dat"
+         local completePath = "dumpIQ_0.dat"
          sigRx = readComplexBinary(completePath,:single)
      else 
          sigRx = zeros(ComplexF32,nbS)
