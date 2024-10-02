@@ -175,6 +175,7 @@ function coreProcessing(csdr::AtomicAbstractSDR)
                     #Putting data  
                     non_blocking_put!(imageOut)
                     cnt += 1
+                    sleep(0.1);
                 end
             elseif OBS_Task[] == 3 
                 # Record signal 
