@@ -149,6 +149,7 @@ function coreProcessing(csdr::AtomicAbstractSDR)
         while(true)
             #Look for configuration update 
             if FLAG_CONFIG_UPDATE[] == true 
+                samplingRate_real = getSamplingRate(csdr.sdr)
                 image_size_down = getImageDuration(VIDEO_CONFIG,samplingRate_real)
                 nbIm = length(csdr.buffer) ÷ image_size_down   # Number of image at SDR rate 
                 FLAG_CONFIG_UPDATE[] = false 
