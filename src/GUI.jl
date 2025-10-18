@@ -678,8 +678,13 @@ function gui(;
         if haskey(kw,:buffer)
             # The user gives a buffer to be played, nothing to be done 
         else 
-            # We load the sample data 
-           buffer = readComplexBinary("./dumpIQ_0.dat",:single)
+            if haskey(kw,:file)
+                # We load the sample data 
+                file = kw[:file] 
+                buffer = readComplexBinary(file,:single)
+            else 
+                buffer = readComplexBinary("./dumpIQ_0.dat",:single)
+            end
            # Create new keywords to be add to SDR
            ak =Pair(:buffer => buffer,:packetSize => 16384) 
            # Add them to other keywords
