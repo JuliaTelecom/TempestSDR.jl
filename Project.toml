@@ -1,8 +1,7 @@
 name = "TempestSDR"
 uuid = "a2deda47-164f-4e4d-810f-425bbd57e6e7"
-version = "0.8.0"
-authors = ["Robin Gerzaguet <robin.gerzaguet@irisa.fr> and contributors"]
 version = "0.9.0"
+authors = ["Robin Gerzaguet <robin.gerzaguet@irisa.fr> and contributors"]
 
 [deps]
 AbstractSDRs = "0bdde9fc-719a-4dc7-8589-49ca6634fa6b"
