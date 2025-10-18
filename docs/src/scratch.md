@@ -1,4 +1,3 @@
-
 # If you don’t know what Julia is (and don’t want to know)
 
 Julia is a fast and powerful programming language made for scientific and numerical computing.  
