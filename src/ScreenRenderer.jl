@@ -7,7 +7,7 @@ module ScreenRenderer
 import Base:close 
 using ImageInTerminal
 using Images, ImageView
-using Gtk
+#using Gtk
 using Makie,GLMakie
 
 # ----------------------------------------------------
@@ -57,32 +57,32 @@ end
 function close(p::TerminalRendererScreen)
 end
 
-# ----------------------------------------------------
-# --- Gtk renderer 
-# ---------------------------------------------------- 
-# Structure 
-struct GtkRendererScreen <: AbstractScreenRenderer 
-    p::AbstractDict
-    function GtkRendererScreen(height,width)
-        mat = zeros(height,width)
-        fullScale!(mat)
-        guidict = ImageView.imshow(mat)
-        new(guidict)
-    end
-end 
-# Renderer 
-function displayScreen!(p::GtkRendererScreen,img)
-    canvas = p.p["gui"]["canvas"] 
-    img2 = fullScale!(img)
-    imshow(canvas,img2)
-    sleep(0.1) 
-    yield()
-    return nothing
-end 
-# Close 
-function close(p::GtkRendererScreen)
-    ImageView.closeall()
-end
+## ----------------------------------------------------
+## --- Gtk renderer 
+## ---------------------------------------------------- 
+## Structure 
+#struct GtkRendererScreen <: AbstractScreenRenderer 
+    #p::AbstractDict
+    #function GtkRendererScreen(height,width)
+        #mat = zeros(height,width)
+        #fullScale!(mat)
+        #guidict = ImageView.imshow(mat)
+        #new(guidict)
+    #end
+#end 
+## Renderer 
+#function displayScreen!(p::GtkRendererScreen,img)
+    #canvas = p.p["gui"]["canvas"] 
+    #img2 = fullScale!(img)
+    #imshow(canvas,img2)
+    #sleep(0.1) 
+    #yield()
+    #return nothing
+#end 
+## Close 
+#function close(p::GtkRendererScreen)
+    #ImageView.closeall()
+#end
 
 
 
@@ -167,7 +167,9 @@ function initScreenRenderer(renderer::Symbol,nbLines,nbColumn)::AbstractScreenRe
     if renderer == :terminal
         return TerminalRendererScreen()
     elseif renderer == :gtk 
-        return GtkRendererScreen(nbLines,nbColumn)
+        @error "Gtk renderer is deprecated"
+        return TerminalRendererScreen()
+        #return GtkRendererScreen(nbLines,nbColumn)
     elseif renderer == :makie 
         return MakieRendererScreen(nbLines,nbColumn)
     else 

@@ -9,6 +9,7 @@ makedocs(sitename="TempestSDR.jl",
                         "GUI explanation"                 => "gui.md",
                         "Using a real SDR"                => "sdr.md",
                         "Precompilation notes"            => "precompilation.md",
+                        "Fast start for non-Julia users" => "scratch.md"
                         ],
          );
 
