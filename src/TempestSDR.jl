@@ -61,10 +61,9 @@ export stop_runtime
 
 """ Parse Keywords and returns the value based on ARGS. If the parameter is not given, return a default value 
 """
-function get_args(arg,default::T) where T
+function get_args(ARGS,arg,default::T) where T
     # Find good argument in list of args 
     goodLine = findall(occursin.(arg,ARGS))
-
     # If not present, get base value 
     if isempty(goodLine)
         if default == nothing 
@@ -86,8 +85,7 @@ end
 
 """ Create additionnal keywords as a NamedTuple 
 """
-function get_kw()
-    excep = ["sdr","carrierFreq","samplingRate","gain"]
+function get_kw(ARGS,excep)
     # --- Serve as container for final tuple generation 
     inList = ()
     outList = []
@@ -110,20 +108,19 @@ function get_kw()
 end
 
 
-
-
-
 """ This is a sandbox function to generate an app 
 """ 
-function julia_main()::Cint 
+function @main(ARGS::Vector{String})::Cint 
     #include("config.jl")
-
-    sdr           = get_args("sdr",:radiosim)
-    carrierFreq   = get_args("carrierFreq",868e6)
-    samplingRate  = get_args("samplingRate",4e6)
-    acquisition   = get_args("acquisition",0.05)
-    gain          = get_args("gain",10)
-    kw  = get_kw()
+    # --- Core parameters 
+    sdr           = get_args(ARGS,"sdr",:radiosim)
+    carrierFreq   = get_args(ARGS,"carrierFreq",868e6)
+    samplingRate  = get_args(ARGS,"samplingRate",4e6)
+    acquisition   = get_args(ARGS,"acquisition",0.05)
+    gain          = get_args(ARGS,"gain",10)
+    # Additional are keywords 
+    excep = ["sdr","carrierFreq","samplingRate","gain"]
+    kw  = get_kw(ARGS,excep)
     # This should import all we need 
     tup = gui(;
 	  sdr,
@@ -133,11 +130,15 @@ function julia_main()::Cint
 	  acquisition,
 	  kw...
 	  )
+#    println("🟢 Press Ctrl+C to quit.")
+    #try while(true)
+            #sleep(0.5)
+            #yield()
+        #end 
+    #catch exception  
+    #end
+    #println("End of application")
     return 0
 end
-
-
-
-
 
 end
