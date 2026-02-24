@@ -4,6 +4,36 @@ using Base.Threads
 using GLMakie: Observable, Observables 
 Callback = Observables.ObserverFunction
 # ----------------------------------------------------
+# --- Theme (dark UI inspired by AbstractSDRsSpectrumAnalyzer)
+# ----------------------------------------------------
+#const GUI_BG    = RGBf(0.02, 0.02, 0.04)
+const GUI_BG    = RGBf(78/255,81/255,82/255)
+const GUI_GRID  = RGBAf(1, 1, 1, 0.08)
+const GUI_SPINE = RGBAf(1, 1, 1, 0.35)
+const GUI_TEXT  = RGBAf(1, 1, 1, 0.85)
+
+set_theme!(Theme(
+    backgroundcolor = GUI_BG,
+    Axis = (
+        backgroundcolor = GUI_BG,
+        xgridvisible = true,
+        ygridvisible = true,
+        xgridcolor = GUI_GRID,
+        ygridcolor = GUI_GRID,
+        spinecolor = GUI_SPINE,
+        xtickcolor = GUI_TEXT,
+        ytickcolor = GUI_TEXT,
+        xticklabelcolor = GUI_TEXT,
+        yticklabelcolor = GUI_TEXT,
+        xlabelcolor = GUI_TEXT,
+        ylabelcolor = GUI_TEXT,
+        xticklabelsize = 12,
+        yticklabelsize = 12,
+        xlabelsize = 14,
+        ylabelsize = 14,
+    ),
+))
+# ----------------------------------------------------
 # --- Constant 
 # ---------------------------------------------------- 
 # The final image size 
@@ -40,6 +70,8 @@ channelImage::Channel = Channel{Matrix{Float32}}(16)
 mutable struct GUI 
     fig::Any 
     heatmap::Any 
+    axT::Any
+    axZ::Any
 end
 
 
@@ -186,6 +218,7 @@ function coreProcessing(csdr::AtomicAbstractSDR)
                 end 
                 theName = "dumpIQ_$(cntBuffer).dat"
                 writeComplexBinary(recordBuffer,theName)
+                @info "Write new content in $theName file"
                 cntBuffer += 1
                 OBS_Task[] = 2
             else 
@@ -294,67 +327,106 @@ function start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;kw...)
     # --- Create GUI 
     # ---------------------------------------------------- 
      # --- Define the Grid Layout 
-     figure = Figure(backgroundcolor=:lightgrey,size=(1400,1000))
-     panelImage = figure[1:2, 1:3] = GridLayout()
-     panelRefresh = figure[3, 1:4] = GridLayout()
-     panelYt = figure[4, 1:4] = GridLayout()
-     panelInfo = figure[1,4] = GridLayout()
+     figure = Figure(backgroundcolor=GUI_BG, size=(1400,1000))
+     main = figure[1,1] = GridLayout()
+     panelImage = main[1,1] = GridLayout()
+     panelInfo = main[1,2] = GridLayout()
+     panelRefresh = panelImage[2,1] = GridLayout()
+     panelYt = panelImage[3,1] = GridLayout()
+
+     colsize!(main, 1, Relative(0.78))
+     colsize!(main, 2, Relative(0.22))
+     rowsize!(main, 1, Relative(1))
+     rowsize!(panelImage, 1, Relative(0.70))
+     rowsize!(panelImage, 2, Relative(0.15))
+     rowsize!(panelImage, 3, Relative(0.15))
+     rowgap!(panelImage, 10)
+     rowgap!(panelInfo, 8)
+     colgap!(main, 12)
      # --- Add a first image
-     axIm = Makie.Axis(panelImage[1,1])
+     axIm = Makie.Axis(panelImage[1,1];
+                       backgroundcolor = GUI_BG,
+                       xgridvisible = false,
+                       ygridvisible = false,
+                       xticksvisible = false,
+                       yticksvisible = false,
+                       xticklabelsvisible = false,
+                       yticklabelsvisible = false,
+                       leftspinevisible = false,
+                       rightspinevisible = false,
+                       topspinevisible = false,
+                       bottomspinevisible = false,
+                      )
      m = randn(Float32,RENDERING_SIZE...)
      plot_obj = ScreenRenderer._plotHeatmap(axIm,m)
      #plot_obj = image(m)
      axIm.yreversed = true
      # --- Display the first lines for correlation 
-     axT = Makie.Axis(panelRefresh[1,1])
+     axT = Makie.Axis(panelRefresh[1,1];
+                      xlabel = "Refresh rate [Hz]",
+                      ylabel = "Correlation",
+                      xlabelcolor = GUI_TEXT,
+                      ylabelcolor = GUI_TEXT,
+                      backgroundcolor = GUI_BG,
+                     )
      delay = collect(50 : 90)
      corr = zeros(Float32,length(delay))
      ScreenRenderer._plotInteractiveCorrelation(axT,delay,corr,OBS_fv[],:turquoise4)
      fontsize = 18
      # The zoomed correlation 
-     axZ = Makie.Axis(panelYt[1,1])
+     axZ = Makie.Axis(panelYt[1,1];
+                      xlabel = "Delay [s]",
+                      ylabel = "Correlation",
+                      xlabelcolor = GUI_TEXT,
+                      ylabelcolor = GUI_TEXT,
+                      backgroundcolor = GUI_BG,
+                     )
      ScreenRenderer._plotInteractiveCorrelation(axZ,delay,corr,0.0,:gold4)
      # Run mode 
-     btnStart = Button(panelInfo[1,1], label = "START", fontsize=fontsize,halign=:center,tellwidth=false,tellheight=true,cornerradius=12,buttoncolor=RGBf(0.67, 0.91, 0.77))
+     btnStart = Button(panelInfo[1,1], label = "START", fontsize=fontsize,halign=:center,tellwidth=false,tellheight=true,cornerradius=12,buttoncolor=RGBf(0.16, 0.55, 0.30),labelcolor=:white)
     # Panel to Exit
-    bttnKill = Button(panelInfo[1,2], label = "Exit", fontsize=fontsize,halign=:center,tellwidth=true,tellheight=false,cornerradius=12,buttoncolor=RGBf(0.96, 0.71, 0.69))
+    bttnKill = Button(panelInfo[1,2], label = "Exit", fontsize=fontsize,halign=:center,tellwidth=true,tellheight=false,cornerradius=12,buttoncolor=RGBf(0.55, 0.17, 0.22),labelcolor=:white)
      # Refresh panel 
-     l_fv = Label(panelInfo[2,1], "Refresh Rate",tellwidth = false,fontsize=fontsize,halign=:left)
-     boxRefresh = Textbox(panelInfo[2,2], placeholder = "Refresh Rate",validator = Float64, tellwidth = false,fontsize=fontsize,halign=:left)
+     l_fv = Label(panelInfo[2,1], "Refresh Rate",tellwidth = false,fontsize=fontsize,halign=:left,color=GUI_TEXT)
+     boxRefresh = Textbox(panelInfo[2,2], placeholder = "Refresh Rate",validator = Float64, tellwidth = false,fontsize=fontsize,halign=:left,textcolor=:white)
      # Panel for yt 
-     l_yt = Label(panelInfo[3,1], "Height size",tellwidth = false,fontsize=fontsize,halign=:left)
-     boxYt = Textbox(panelInfo[3,2], placeholder = "$(OBS_yt[])",validator = Int64, tellwidth = false,fontsize=fontsize,halign=:left)
+     l_yt = Label(panelInfo[3,1], "Height size",tellwidth = false,fontsize=fontsize,halign=:left,color=GUI_TEXT)
+     boxYt = Textbox(panelInfo[3,2], placeholder = "$(OBS_yt[])",validator = Int64, tellwidth = false,fontsize=fontsize,halign=:left,textcolor=:white)
     panelInfo[3, 3] = buttongrid = GridLayout(tellwidth = false,halign=:left)
-    btnYt_plus = Button(buttongrid[1,1], label = "+", tellwidth = false,fontsize=fontsize,halign=:left,width=20)
-    btnYt_minus = Button(buttongrid[2,1], label = "-", tellwidth = false,fontsize=fontsize,halign=:left,width=20)
+    btnYt_plus = Button(buttongrid[1,1], label = "+", tellwidth = false,fontsize=fontsize,halign=:left,width=20,buttoncolor=RGBf(0.25, 0.45, 0.80),labelcolor=:white)
+    btnYt_minus = Button(buttongrid[2,1], label = "-", tellwidth = false,fontsize=fontsize,halign=:left,width=20,buttoncolor=RGBf(0.25, 0.45, 0.80),labelcolor=:white)
     rowgap!(buttongrid,0.15)
     # Panel to redo correlation
-    bttnCorr = Button(panelInfo[4,1], label = "Correlate !", fontsize=fontsize,halign=:left,cornerradius=12)
+    bttnCorr = Button(panelInfo[4,1], label = "Correlate !", fontsize=fontsize,halign=:left,cornerradius=12,buttoncolor=RGBf(0.25, 0.45, 0.80),labelcolor=:white)
     # Slider for Radio gain 
-     l_gain = Label(panelInfo[5,1], "Radio Gain",tellwidth = false,fontsize=fontsize,halign=:left)
-    sliderGain = Slider(panelInfo[5,2], range = 0:1:50, startvalue = 3)
+     l_gain = Label(panelInfo[5,1], "Radio Gain",tellwidth = false,fontsize=fontsize,halign=:left,color=GUI_TEXT)
+    sliderGain = Slider(panelInfo[5,2], range = -30:1:70, startvalue = 3)
     # SDR carrier frequency 
-    l_freq = Label(panelInfo[6,1], "Carrier freq (MHz)",tellwidth = false,fontsize=fontsize,halign=:left)
-    boxFreq = Textbox(panelInfo[6,2], placeholder = "$(HztoMHz(carrierFreq))",validator = Float64, tellwidth = false,fontsize=fontsize,halign=:left)
+    l_freq = Label(panelInfo[6,1], "Carrier freq (MHz)",tellwidth = false,fontsize=fontsize,halign=:left,color=GUI_TEXT)
+    boxFreq = Textbox(panelInfo[6,2], placeholder = "$(HztoMHz(carrierFreq))",validator = Float64, tellwidth = false,fontsize=fontsize,halign=:left,textcolor=:white)
     # SDR carrier frequency 
-    l_samp = Label(panelInfo[7,1], "Sample Rate (MHz)",tellwidth = false,fontsize=fontsize,halign=:left)
-    boxSamp = Textbox(panelInfo[7,2], placeholder = "$(HztoMHz(samplingRate))",validator = Float64, tellwidth = false,fontsize=fontsize,halign=:left)
+    l_samp = Label(panelInfo[7,1], "Sample Rate (MHz)",tellwidth = false,fontsize=fontsize,halign=:left,color=GUI_TEXT)
+    boxSamp = Textbox(panelInfo[7,2], placeholder = "$(HztoMHz(samplingRate))",validator = Float64, tellwidth = false,fontsize=fontsize,halign=:left,textcolor=:white)
     # LPF coefficient 
-     l_filt = Label(panelInfo[8,1], "Low pass filter",tellwidth = false,fontsize=fontsize,halign=:left)
+     l_filt = Label(panelInfo[8,1], "Low pass filter",tellwidth = false,fontsize=fontsize,halign=:left,color=GUI_TEXT)
      sliderLPF = Slider(panelInfo[8,2], range = Float32.(0:0.05:1), startvalue = Float32(OBS_α[]))
      # Panel for configuration 
-     l_config = Label(panelInfo[9,1], "Configuration ",tellwidth = false,fontsize=fontsize,halign=:left)
-     l_config_out = Label(panelInfo[9,2], "$(getDescription(VIDEO_CONFIG)[1])",tellwidth = false,fontsize=fontsize,halign=:left)
+     l_config = Label(panelInfo[9,1], "Configuration ",tellwidth = false,fontsize=fontsize,halign=:left,color=GUI_TEXT)
+     l_config_out = Label(panelInfo[9,2], "$(getDescription(VIDEO_CONFIG)[1])",tellwidth = false,fontsize=fontsize,halign=:left,color=GUI_TEXT)
      # Panel for configuration 
      #l_config = Label(panelInfo[9,1], "Frame size (theo) ",tellwidth = false,fontsize=fontsize,halign=:left)
      #l_config_th = Label(panelInfo[9,2], "$(getDescription(VIDEO_CONFIG)[2])",tellwidth = false,fontsize=fontsize,halign=:left)
    # Panel to redo correlation
-    bttnRecord = Button(panelInfo[4,2], label = "Record !", fontsize=fontsize,halign=:left,cornerradius=12,buttoncolor=RGBf(0.56, 0.71, 0.69))
+    bttnRecord = Button(panelInfo[4,2], label = "Record !", fontsize=fontsize,halign=:left,cornerradius=12,buttoncolor=RGBf(0.20, 0.55, 0.55),labelcolor=:white)
 
     # Display the image 
+    colsize!(panelInfo, 1, Relative(0.55))
+    colsize!(panelInfo, 2, Relative(0.35))
+    colsize!(panelInfo, 3, Relative(0.10))
+    resize_to_layout!(figure)
     display(figure)
     # Create objet 
-    gui = GUI(figure,plot_obj)
+    gui = GUI(figure,plot_obj,axT,axZ)
 
 
     # ----------------------------------------------------
@@ -373,7 +445,20 @@ function start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;kw...)
      # Radio 
      csdr = openAtomicSDR(sdr,carrierFreq,samplingRate,gain;bufferSize=nbS,buffer=sigRx,packetSize=nbS,kw...)
 
-   
+
+     # Force manual gain when using BladeRF (no AGC in hardware).
+     if sdr== :bladerf
+         AbstractSDRs.BladeRFBindings.LibBladeRF.bladerf_set_gain_mode(
+                                                                       csdr.sdr.radio.x,
+                                                                       AbstractSDRs.BladeRFBindings.LibBladeRF.BLADERF_CHANNEL_RX(0),
+                                                                       AbstractSDRs.BladeRFBindings.LibBladeRF.BLADERF_GAIN_MGC
+                                                                      )
+         # updateGain!(csdr.sdr, 20)
+        #  AbstractSDRs.BladeRFBindings.updateRFBandwidth!(csdr.sdr,getSamplingRate(csdr.sdr))
+         print(csdr.sdr)
+     end
+
+
 
     # ----------------------------------------------------
     # --- Launch threads 
@@ -433,12 +518,12 @@ function start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;kw...)
     """
     cb_corr = on(OBS_Corr) do cc 
         # Redraw the correlation 
-        delete!(gui.fig.content[2],gui.fig.content[2].scene[3])
-        lines!(gui.fig.content[2],rates_refresh,Γ_refresh,color=:gold)
+        delete!(gui.axT,gui.axT.scene[3])
+        lines!(gui.axT,rates_refresh,Γ_refresh,color=:gold)
         # Put the lines at proper location and update the text
-        gui.fig.content[2].scene[2][1] = OBS_fv[]
+        gui.axT.scene[2][1] = OBS_fv[]
         #
-        updateToolTip(gui.fig.content[2],1,OBS_fv[])
+        updateToolTip(gui.axT,1,OBS_fv[])
         OBS_Corr_yt[] = true 
 
     end
@@ -448,10 +533,10 @@ function start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;kw...)
     """ Click on refresh-Correlation leads to interactive update of the value of the refresh rate of the screen 
     -> Update the value of fv 
     """
-    cb_interactive_corr = on(events(gui.fig.content[2].scene).mousebutton) do mp
+    cb_interactive_corr = on(events(gui.axT.scene).mousebutton) do mp
         if mp.button == Mouse.left
-            if is_mouseinside(gui.fig.content[2].scene)
-                select_f,_ = mouseposition(gui.fig.content[2].scene)
+            if is_mouseinside(gui.axT.scene)
+                select_f,_ = mouseposition(gui.axT.scene)
                 # Update configuration
                 OBS_fv[] = select_f
             end
@@ -475,9 +560,9 @@ function start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;kw...)
     cb_fv = on(OBS_fv) do fv 
         FLAG_CONFIG_UPDATE[] = true
         # Put the lines at proper location and update the text
-        gui.fig.content[2].scene[2][1] = OBS_fv[]
+        gui.axT.scene[2][1] = OBS_fv[]
         # Refresh the text 
-        updateToolTip(gui.fig.content[2],1,OBS_fv[])
+        updateToolTip(gui.axT,1,OBS_fv[])
         # Refresg the refresh textbox
         boxRefresh.displayed_string = string(round(OBS_fv[];digits=2))
         # Update yt plot 
@@ -498,22 +583,22 @@ function start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;kw...)
         rates_yt = range(0,step=1/OBS_Fs[],length=N)
         τ_y_t = yt2delay(OBS_yt[],fv) # Delay in s associated to yt
        # Redraw the correlation 
-        delete!(gui.fig.content[3],gui.fig.content[3].scene[3])
-        lines!(gui.fig.content[3],rates_yt,Γ_yt,color=:turquoise4)
+        delete!(gui.axZ,gui.axZ.scene[3])
+        lines!(gui.axZ,rates_yt,Γ_yt,color=:turquoise4)
         # Put the lines at proper location and update the text
-        gui.fig.content[3].scene[2][1] = τ_y_t
+        gui.axZ.scene[2][1] = τ_y_t
         #
-        updateToolTip(gui.fig.content[3],1,τ_y_t,OBS_yt[])
+        updateToolTip(gui.axZ,1,τ_y_t,OBS_yt[])
     end
     push!(list_cb,cb_corr_yt)
 
     """ Click on refresh-Correlation leads to interactive update of the value of number of lines 
     -> Update the value of yt
     """
-    cb_interactive_corr_yt = on(events(gui.fig.content[3].scene).mousebutton) do mp
+    cb_interactive_corr_yt = on(events(gui.axZ.scene).mousebutton) do mp
         if mp.button == Mouse.left
-            if is_mouseinside(gui.fig.content[3].scene)
-                τ_y_t,_ = mouseposition(gui.fig.content[3].scene)
+            if is_mouseinside(gui.axZ.scene)
+                τ_y_t,_ = mouseposition(gui.axZ.scene)
                 # Switch to y_t config 
                 y_t = delay2yt(τ_y_t,OBS_fv[])
                 # Update configuration
@@ -554,9 +639,9 @@ function start_runtime(sdr,carrierFreq,samplingRate,gain,acquisition;kw...)
         τ_y_t = yt2delay(OBS_yt[],OBS_fv[])
         FLAG_CONFIG_UPDATE[] = true
         # Put the lines at proper location and update the text
-        gui.fig.content[3].scene[2][1] = τ_y_t
+        gui.axZ.scene[2][1] = τ_y_t
         # Refresh the text 
-        updateToolTip(gui.fig.content[3],1,τ_y_t,OBS_yt[])
+        updateToolTip(gui.axZ,1,τ_y_t,OBS_yt[])
         # Refresh the yt textbox
         boxYt.displayed_string = string(OBS_yt[])
     end
@@ -740,4 +825,3 @@ function destroy(gui::GUI)
         GLMakie.destroy!(sc)
     end 
 end
-

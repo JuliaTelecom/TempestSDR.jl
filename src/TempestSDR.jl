@@ -101,6 +101,7 @@ function get_kw(ARGS,excep)
             arg_val = Meta.parse(split(kargs,"=")[2])
             # Push in the 2 lists
             inList = (inList...,arg_symb)
+            arg_val = replace(arg_val, "addr:" => "addr=")
             push!(outList,arg_val)
         end
     end
